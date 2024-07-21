@@ -2,23 +2,22 @@
 INPUT_FILE_OBSERVABLE_FEATURES = ""
 INPUT_FILE_EXPLAINING_FEATURES = ""
 
+OUTPUT_FOLDER_BASE = ""
+
 GROUP_NAME = "Individual"
 DATASET_NAME = "biological-dataset"
 
 OBSERVABLE_FEATURE_NAMES = {
-    'num_lhd': "# LHD phases",
-    'num_lying': "# lying phases",
-    'perc_lhd': "proportion LHD",
-    'perc_lying': "proportion lying",
-
+    "num_lhd": "# LHD phases",
+    "num_lying": "# lying phases",
+    "perc_lhd": "proportion LHD",
+    "perc_lying": "proportion lying",
 }
 
-EXPLAINING_FEATURE_NAMES = {
-
-}
+EXPLAINING_FEATURE_NAMES = {}
 
 # determining the number of observable patterns
-GAP_STATISTIC_CLUSTER_RANGE = [3, 20]
+GAP_STATISTIC_CLUSTER_RANGE = 10
 
 # pattern calculation
 NUMBER_OBSERVABLE_PATTERNS = 5
@@ -33,4 +32,3 @@ DISTORTION_STD = 0.01
 
 # imputation
 NN_IMPUTATION_K = 10
-
