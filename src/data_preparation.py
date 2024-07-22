@@ -108,26 +108,34 @@ class DataPreparator:
     def prepare_data():
 
         save_folder: str = f"{config.OUTPUT_FOLDER_BASE}base_data/"
-        required_files: List[str] = [f"{save_folder}{config.DATASET_NAME}_explainable_dataset_scaled.xlsx",
-                                     f"{save_folder}{config.DATASET_NAME}_explainable_scaling_factors.xlsx",
-                                     f"{save_folder}{config.DATASET_NAME}_observable_dataset_scaled.xlsx",
-                                     f"{save_folder}{config.DATASET_NAME}_observable_scaling_factors.xlsx",
-                                     f"{save_folder}{config.DATASET_NAME}_sample_size.xlsx",
-                                     ]
+        required_files: List[str] = [
+            f"{save_folder}{config.DATASET_NAME}_explainable_dataset_scaled.xlsx",
+            f"{save_folder}{config.DATASET_NAME}_explainable_scaling_factors.xlsx",
+            f"{save_folder}{config.DATASET_NAME}_observable_dataset_scaled.xlsx",
+            f"{save_folder}{config.DATASET_NAME}_observable_scaling_factors.xlsx",
+            f"{save_folder}{config.DATASET_NAME}_sample_size.xlsx",
+        ]
 
-        if not config.USE_CACHED_DATASET or DataPreparator.not_all_existent(required_files):
+        if not config.USE_CACHED_DATASET or DataPreparator.not_all_existent(
+            required_files
+        ):
 
-            explainable_df, explainable_scaling = DataPreparator.get_explainable_dataframe()
-            observable_df, observable_scaling = DataPreparator.get_observable_dataframe()
+            explainable_df, explainable_scaling = (
+                DataPreparator.get_explainable_dataframe()
+            )
+            observable_df, observable_scaling = (
+                DataPreparator.get_observable_dataframe()
+            )
 
-            sample_size_df: pd.DataFrame = observable_df[ observable_df["oversampled"] is False ].groupby(config.GROUP_NAME).count()[list(config.EXPLAINING_FEATURE_NAMES.keys())[0]]
-            sample_size_df.columns=["Sample size"]
-
-
+            sample_size_df: pd.DataFrame = (
+                observable_df[observable_df["oversampled"] is False]
+                .groupby(config.GROUP_NAME)
+                .count()[list(config.EXPLAINING_FEATURE_NAMES.keys())[0]]
+            )
+            sample_size_df.columns = ["Sample size"]
 
             if not os.path.exists(save_folder):
                 os.makedirs(save_folder)
-
 
             explainable_df.to_excel(
                 f"{save_folder}{config.DATASET_NAME}_explainable_dataset_scaled.xlsx",

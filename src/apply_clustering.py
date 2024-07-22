@@ -19,11 +19,14 @@ import config
 # draw dendrogram and save the pairwise distances
 ## output -> excel with fingerprints, response types, dendrogram, pairwise distances
 
+
 class ClusteringApplier:
 
     @staticmethod
-    def read_observable_data() -> pd.DataFrame|None:
-        required_file: str = f"{config.OUTPUT_FOLDER_BASE}base_data/{config.DATASET_NAME}_observable_dataset_scaled.xlsx"
+    def read_observable_data() -> pd.DataFrame | None:
+        required_file: str = (
+            f"{config.OUTPUT_FOLDER_BASE}base_data/{config.DATASET_NAME}_observable_dataset_scaled.xlsx"
+        )
         try:
             df: pd.DataFrame = pd.read_excel(required_file)
             df = df[list(config.OBSERVABLE_FEATURE_NAMES.keys())]
@@ -38,11 +41,17 @@ class ClusteringApplier:
 
         df: pd.DataFrame = ClusteringApplier.read_observable_data()
 
-        gs = GapStatistics(algorithm=AgglomerativeClustering, distance_metric='minkowski', return_params=True)
+        gs = GapStatistics(
+            algorithm=AgglomerativeClustering,
+            distance_metric="minkowski",
+            return_params=True,
+        )
         num_colors: int = config.GAP_STATISTIC_CLUSTER_RANGE
-        cm = plt.get_cmap('gist_rainbow')
-        color_dict = {i: cm(1.*i/num_colors) for i in range(num_colors)}
+        cm = plt.get_cmap("gist_rainbow")
+        color_dict = {i: cm(1.0 * i / num_colors) for i in range(num_colors)}
         gs.fit_predict(K=config.GAP_STATISTIC_CLUSTER_RANGE, X=df.to_numpy())
         gs.plot(original_labels=df.columns, colors=color_dict)
-        plt.savefig(f"{config.OUTPUT_FOLDER_BASE}gapstat/{config.DATASET_NAME}_gap-statistic-plot.pdf", bbox_inches='tight')
-
+        plt.savefig(
+            f"{config.OUTPUT_FOLDER_BASE}gapstat/{config.DATASET_NAME}_gap-statistic-plot.pdf",
+            bbox_inches="tight",
+        )
