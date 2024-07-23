@@ -5,6 +5,7 @@ INPUT_FILE_EXPLAINING_FEATURES = ""
 OUTPUT_FOLDER_BASE = ""
 
 GROUP_NAME = "Individual"
+OBSERVABLE_NAME = "observations (night)"
 DATASET_NAME = "biological-dataset"
 
 OBSERVABLE_FEATURE_NAMES = {

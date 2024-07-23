@@ -106,7 +106,6 @@ class DataPreparator:
 
     @staticmethod
     def prepare_data():
-
         save_folder: str = f"{config.OUTPUT_FOLDER_BASE}base_data/"
         required_files: List[str] = [
             f"{save_folder}{config.DATASET_NAME}_explainable_dataset_scaled.xlsx",
