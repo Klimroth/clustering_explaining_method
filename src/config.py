@@ -36,3 +36,6 @@ NN_IMPUTATION_K = 10
 
 # distance measure of fingerprints: jensenshannon, euclidean, correlation
 DISTANCE_MEASURE_FINGERPRINT = "jensenshannon"
+
+# maximum parallel threads
+MAX_NUM_THREADS = 6
