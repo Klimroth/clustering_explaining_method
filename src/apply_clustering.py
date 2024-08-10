@@ -17,11 +17,20 @@ import config
 
 # TODO: add caching!
 
+"""
+draw_gap_statistic_plot(): outputs gap statistic evaluation on the observable to determine the number of observable patterns
+calculate_observable_patterns(): using config.NUMBER_OBSERVABLE_PATTERNS, it conducts the clustering on observables and plots a dendrogram
+calculate_explainable_distances(): depending on feature selection mode it outputs pairwise distances based on explainable features and plots a dendrogram
+
+"""
+
 
 class ClusteringApplier:
 
     @staticmethod
-    def read_observable_data(read_only_feature_col: bool = True) -> pd.DataFrame | None:
+    def _read_observable_data(
+        read_only_feature_col: bool = True,
+    ) -> pd.DataFrame | None:
         required_file: str = (
             f"{config.OUTPUT_FOLDER_BASE}base_data/{config.DATASET_NAME}_observable_dataset_scaled.xlsx"
         )
@@ -38,7 +47,9 @@ class ClusteringApplier:
     @staticmethod
     def read_explaining_features() -> pd.DataFrame | None:
         try:
-            df = pd.read_excel(config.INPUT_FILE_EXPLAINING_FEATURES)[list(config.EXPLAINING_FEATURE_NAMES.keys())]
+            df = pd.read_excel(config.INPUT_FILE_EXPLAINING_FEATURES)[
+                list(config.EXPLAINING_FEATURE_NAMES.keys())
+            ]
         except:
             print(f"File not valid {config.INPUT_FILE_EXPLAINING_FEATURES}")
             return None
@@ -47,7 +58,7 @@ class ClusteringApplier:
     @staticmethod
     def draw_gap_statistic_plot() -> None:
 
-        df: pd.DataFrame = ClusteringApplier.read_observable_data()
+        df: pd.DataFrame = ClusteringApplier._read_observable_data()
 
         gs = GapStatistics(
             algorithm=AgglomerativeClustering,
@@ -96,7 +107,7 @@ class ClusteringApplier:
             os.makedirs(output_path)
 
         plt.savefig(
-            f"{output_path}{config.DATASET_NAME}_dendrogram-{x_label}.pdf",
+            f"{output_path}{config.DATASET_NAME}_dendrogram-{x_label}-{y_label}.pdf",
             format="pdf",
             dpi=300,
             bbox_inches="tight",
@@ -134,7 +145,7 @@ class ClusteringApplier:
             os.makedirs(output_path)
 
         plt.savefig(
-            f"{output_path}{config.DATASET_NAME}_dendrogram-{x_label}.pdf",
+            f"{output_path}{config.DATASET_NAME}_dendrogram-{x_label}-{y_label}.pdf",
             format="pdf",
             dpi=300,
             bbox_inches="tight",
@@ -169,7 +180,7 @@ class ClusteringApplier:
         return pd.DataFrame(ret)
 
     @staticmethod
-    def _calculate_pairwise_distances(
+    def calculate_pairwise_distances(
         df: pd.DataFrame, feature_names: List[str]
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
@@ -212,7 +223,7 @@ class ClusteringApplier:
     @staticmethod
     def calculate_observable_patterns() -> None:
         # load data
-        df: pd.DataFrame = ClusteringApplier.read_observable_data(
+        df: pd.DataFrame = ClusteringApplier._read_observable_data(
             read_only_feature_col=False
         )
         try:
@@ -248,7 +259,7 @@ class ClusteringApplier:
         df_observable_data = df[df["oversampled"] is False]
         df_fingerprint = ClusteringApplier._calculate_fingerprints(df_observable_data)
 
-        pw_dist, pw_norm_dist = ClusteringApplier._calculate_pairwise_distances(
+        pw_dist, pw_norm_dist = ClusteringApplier.calculate_pairwise_distances(
             df_fingerprint, list(config.OBSERVABLE_FEATURE_NAMES.keys())
         )
 
@@ -284,28 +295,43 @@ class ClusteringApplier:
             f"{output_path}{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
         )
 
-
     @staticmethod
     def _get_correlation_coefficient(args) -> float:
         features: List[str] = args[0]
         df_explainable: pd.DataFrame = args[1]
         df_observable_distances: pd.DataFrame = args[2]
 
-        _, df_explainable_distances = ClusteringApplier._calculate_pairwise_distances(
-            df_explainable, features)
+        _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
+            df_explainable, features
+        )
 
         x = df_explainable_distances.to_numpy().flatten()
         y = df_observable_distances.to_numpy().flatten()
 
-        return float(np.corrcoef(x, y)[0,1])
-
+        return float(np.corrcoef(x, y)[0, 1])
 
     @staticmethod
-    def _feature_selection_exhaustive(df_explainable: pd.DataFrame, df_observable_distances: pd.DataFrame, features: List[str]) -> Tuple[List[str], float]:
+    def _feature_selection_exhaustive(
+        df_explainable: pd.DataFrame,
+        df_observable_distances: pd.DataFrame,
+        features: List[str],
+    ) -> Tuple[List[str], float]:
 
-        powerset_features = chain.from_iterable(combinations(features, r) for r in range(1, len(features) + 1))
-        powerset_method_input = [ (list(feature_set), df_explainable, df_observable_distances) for feature_set in powerset_features ]
-        correlation_coefficients: List[float] = sorted(thread_map(ClusteringApplier._get_correlation_coefficient, powerset_method_input, desc="", max_workers=config.MAX_NUM_THREADS))
+        powerset_features = chain.from_iterable(
+            combinations(features, r) for r in range(1, len(features) + 1)
+        )
+        powerset_method_input = [
+            (list(feature_set), df_explainable, df_observable_distances)
+            for feature_set in powerset_features
+        ]
+        correlation_coefficients: List[float] = sorted(
+            thread_map(
+                ClusteringApplier._get_correlation_coefficient,
+                powerset_method_input,
+                desc="",
+                max_workers=config.MAX_NUM_THREADS,
+            )
+        )
 
         maximum_correlation: float = max(correlation_coefficients)
         optimal_feature_set: List[str] = features
@@ -319,9 +345,12 @@ class ClusteringApplier:
 
         return optimal_feature_set, maximum_correlation
 
-
     @staticmethod
-    def _feature_selection_greedy(df_explainable: pd.DataFrame, df_observable_distances: pd.DataFrame, features: List[str]) -> Tuple[List[str], float]:
+    def _feature_selection_greedy(
+        df_explainable: pd.DataFrame,
+        df_observable_distances: pd.DataFrame,
+        features: List[str],
+    ) -> Tuple[List[str], float]:
         currently_used_features: List[str] = []
         remaining_features: List[str] = features
         current_correlation_coefficient: float = -2.0
@@ -329,7 +358,13 @@ class ClusteringApplier:
         while True:
             best_feature: str = ""
             for feature in remaining_features:
-                feature_coeff: float = ClusteringApplier._get_correlation_coefficient([currently_used_features + [feature], df_explainable, df_observable_distances])
+                feature_coeff: float = ClusteringApplier._get_correlation_coefficient(
+                    [
+                        currently_used_features + [feature],
+                        df_explainable,
+                        df_observable_distances,
+                    ]
+                )
                 if feature_coeff > current_correlation_coefficient:
                     best_feature = feature
                     current_correlation_coefficient = feature_coeff
@@ -340,13 +375,50 @@ class ClusteringApplier:
 
         return currently_used_features, current_correlation_coefficient
 
-
-
     @staticmethod
     def calculate_explainable_distances():
-        df: pd.DataFrame = ClusteringApplier.read_explaining_features()
-        if df is None:
+        df_explainable: pd.DataFrame = ClusteringApplier.read_explaining_features()
+        df_observable_distances: pd.DataFrame = pd.read_excel(
+            f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
+        )
+        features: List[str] = list(config.EXPLAINING_FEATURE_NAMES.keys())
+
+        if df_explainable is None or df_observable_distances is None:
             return
 
+        if config.INFERENCE_MODE_EXPLAINING_FEATURES == "exact":
+            optimal_feature_set, maximum_correlation = (
+                ClusteringApplier._feature_selection_exhaustive(
+                    df_explainable, df_observable_distances, features
+                )
+            )
+        else:
+            optimal_feature_set, maximum_correlation = (
+                ClusteringApplier._feature_selection_greedy(
+                    df_explainable, df_observable_distances, features
+                )
+            )
 
+        overview_dict: Dict[str, List[str | float]] = {
+            "correlation": [maximum_correlation]
+        }
+        for feature in features:
+            overview_dict[feature] = [1 if feature in optimal_feature_set else 0]
 
+        output_file: str = (
+            f"{config.OUTPUT_FOLDER_BASE}explaining_features/{config.DATASET_NAME}-optimal_explainable_features-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
+        )
+        pd.DataFrame(overview_dict).to_excel(output_file, index=False)
+
+        # draw dendrogram of those explaining set
+        _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
+            df_explainable, features
+        )
+
+        ClusteringApplier._plot_dendrogram_by_distance_matrix(
+            mat=df_explainable_distances.to_numpy(),
+            labels=features,
+            x_label=config.GROUP_NAME,
+            y_label="Distance based on explainable features",
+            title="Similarity based on the optimal set of explainable features",
+        )
