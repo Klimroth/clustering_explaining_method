@@ -21,7 +21,6 @@ import config
 draw_gap_statistic_plot(): outputs gap statistic evaluation on the observable to determine the number of observable patterns
 calculate_observable_patterns(): using config.NUMBER_OBSERVABLE_PATTERNS, it conducts the clustering on observables and plots a dendrogram
 calculate_explainable_distances(): depending on feature selection mode it outputs pairwise distances based on explainable features and plots a dendrogram
-
 """
 
 

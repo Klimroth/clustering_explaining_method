@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 import numpy as np
 import pandas as pd
@@ -108,13 +108,34 @@ class ResultVisualizer:
         distance_explainable: pd.DataFrame, distance_observable: pd.DataFrame
     ):
 
-        # TODO: join the dataframes such that we get "pair" "explainable" "observable",
+        if set(distance_explainable.index.to_list()) != set(distance_observable.index.to_list):
+            print("ERROR: Explainables and observables have a different index. Cannot make distance regression.")
+            return
 
-        fig = px.scatter(df, x="total_bill", y="tip", trendline="ols")
+        distances: Dict[str, List[str|float]] = {
+            "distance explainable features": [],
+            "distance observable features": [],
+            "groupname_1": [],
+            "groupname_2": [],
+        }
+
+        group_names: List[str] = distance_explainable.index.to_list()
+        for j in range(len(group_names)):
+            for i in range(j+1, len(group_names)):
+                distances["distance explainable features"].append( distance_explainable.loc[group_names[j], group_names[i]] )
+                distances["distance observable features"].append(
+                    distance_observable.loc[group_names[j], group_names[i]])
+                distances["groupname_1"].append(group_names[j])
+                distances["groupname_2"].append(group_names[i])
+
+        df = pd.DataFrame(distances)
+        fig = px.scatter(df, x="distance explainable features", y="distance observable features", trendline="ols")
         fig.update_layout(
             plot_bgcolor="rgba(0, 0, 0, 0)",
             paper_bgcolor="rgba(0, 0, 0, 0)",
         )
+
+        # TODO: save image to sensible place
         fig.write_image("...")
 
 
