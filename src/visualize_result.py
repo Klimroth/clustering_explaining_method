@@ -1,3 +1,4 @@
+import os
 from typing import List, Dict
 
 import numpy as np
@@ -33,15 +34,19 @@ class ResultVisualizer:
             df_explainable, explainable_features
         )
 
+        ResultVisualizer.make_regression_plot(df_explainable_distances, df_observable_distances)
+
         # TODO
         # read observable patterns and plot radar chart
+        # for each of the patterns make one radar plot (scaled to [0,1])
 
         # read fingerprints per group with respect to observable patterns and plot radar chart
         # read explainable patterns per group and plot radar chart
         # --> as a subplot per group: fingerprint | explainable pattern
+        # --> call plot_radar_chart(..., title="groupname") for each group
 
-        # TODO 2
-        # read pairwise distances and make linear regression plot
+
+
 
     @staticmethod
     def plot_radar_chart(
@@ -101,18 +106,29 @@ class ResultVisualizer:
             }
         )
 
-        fig.write_image("...")
+        output_path = f"{config.OUTPUT_FOLDER_BASE}result_visualization/"
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        fig.write_image(
+            f"{output_path}{config.DATASET_NAME}-{title}-radar_plot-{config.NUMBER_OBSERVABLE_PATTERNS}.png",
+            dpi=300,
+        )
 
     @staticmethod
     def make_regression_plot(
         distance_explainable: pd.DataFrame, distance_observable: pd.DataFrame
     ):
 
-        if set(distance_explainable.index.to_list()) != set(distance_observable.index.to_list):
-            print("ERROR: Explainables and observables have a different index. Cannot make distance regression.")
+        if set(distance_explainable.index.to_list()) != set(
+            distance_observable.index.to_list
+        ):
+            print(
+                "ERROR: Explainables and observables have a different index. Cannot make distance regression."
+            )
             return
 
-        distances: Dict[str, List[str|float]] = {
+        distances: Dict[str, List[str | float]] = {
             "distance explainable features": [],
             "distance observable features": [],
             "groupname_1": [],
@@ -121,22 +137,36 @@ class ResultVisualizer:
 
         group_names: List[str] = distance_explainable.index.to_list()
         for j in range(len(group_names)):
-            for i in range(j+1, len(group_names)):
-                distances["distance explainable features"].append( distance_explainable.loc[group_names[j], group_names[i]] )
+            for i in range(j + 1, len(group_names)):
+                distances["distance explainable features"].append(
+                    distance_explainable.loc[group_names[j], group_names[i]]
+                )
                 distances["distance observable features"].append(
-                    distance_observable.loc[group_names[j], group_names[i]])
+                    distance_observable.loc[group_names[j], group_names[i]]
+                )
                 distances["groupname_1"].append(group_names[j])
                 distances["groupname_2"].append(group_names[i])
 
         df = pd.DataFrame(distances)
-        fig = px.scatter(df, x="distance explainable features", y="distance observable features", trendline="ols")
+        fig = px.scatter(
+            df,
+            x="distance explainable features",
+            y="distance observable features",
+            trendline="ols",
+        )
         fig.update_layout(
             plot_bgcolor="rgba(0, 0, 0, 0)",
             paper_bgcolor="rgba(0, 0, 0, 0)",
         )
 
-        # TODO: save image to sensible place
-        fig.write_image("...")
+        output_path = f"{config.OUTPUT_FOLDER_BASE}result_visualization/"
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        fig.write_image(
+            f"{output_path}{config.DATASET_NAME}-regression_plot-{config.NUMBER_OBSERVABLE_PATTERNS}.png",
+            dpi=300,
+        )
 
 
 # make radar plots:

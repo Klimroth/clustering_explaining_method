@@ -1,38 +1,55 @@
 # basic configuration
-INPUT_FILE_OBSERVABLE_FEATURES = "F:/Programmierung/Dierkes/evaluation_cluster_based/data/naturverbundenheit-daten.xlsx"
-INPUT_FILE_EXPLAINING_FEATURES = "F:/Programmierung/Dierkes/evaluation_cluster_based/data/naturverbundenheit-indices.xlsx"
+INPUT_FILE_OBSERVABLE_FEATURES = "F:/Programmierung/Dierkes/evaluation_cluster_based/data/biological_set_raw_data.xlsx"
+INPUT_FILE_EXPLAINING_FEATURES = "F:/Programmierung/Dierkes/evaluation_cluster_based/data/biological_set_explaining_features.xlsx"
 
-OUTPUT_FOLDER_BASE = "F:/Programmierung/Dierkes/evaluation_cluster_based/results/naturverbundenheit/"
+OUTPUT_FOLDER_BASE = (
+    "F:/Programmierung/Dierkes/evaluation_cluster_based/results/naturverbundenheit/"
+)
 
-#GROUP_NAME = "Individual"
-#OBSERVABLE_NAME = "observations (night)"
-#DATASET_NAME = "biological-dataset"
-#
-#OBSERVABLE_FEATURE_NAMES = {
-#    "num_lhd": "# LHD phases",
-#    "num_lying": "# lying phases",
-#    "perc_lhd": "proportion LHD",
-#    "perc_lying": "proportion lying",
-#}
-
-GROUP_NAME = "Country"
-OBSERVABLE_NAME = "indices"
-DATASET_NAME = "nature-dataset"
+GROUP_NAME = "Individual"
+OBSERVABLE_NAME = "observations (night)"
+DATASET_NAME = "biological-dataset"
 
 OBSERVABLE_FEATURE_NAMES = {
-    "Difference": "discrimination ability",
-    "Env_Pol_1": "pollution",
-    "Climate_1": "climate change",
-    "Aliens_1": "invasive species",
-    "Landuse_1": "landuse",
-    "Exploit_1": "exploitation of natural resources"
+    "num_lhd": "# LHD phases",
+    "num_lying": "# lying phases",
+    "perc_lhd": "proportion LHD",
+    "perc_lying": "proportion lying",
 }
-
 
 EXPLAINING_FEATURE_NAMES = {
-    x:x for x in ["GBIS", "NOIS", "APMP", "FosCO2", "CO2Em", "ConvVegToCrop", "BHI", "AQ", "EH", "NFL", "UP", "HDI", "LPI", "EPI", "GII", "SDG", "NRI", "FA", "AL", "GI"]
+    x: x
+    for x in [
+        "Age",
+        "Sex",
+        "Zoo",
+        "Stable",
+        "Genus_ID",
+        "Family_ID",
+        "Order_ID",
+        "SH",
+        "Weight",
+        "Habitat",
+    ]
 }
 
+# GROUP_NAME = "Country"
+# OBSERVABLE_NAME = "indices"
+# DATASET_NAME = "nature-dataset"
+#
+# OBSERVABLE_FEATURE_NAMES = {
+#    "Difference": "discrimination ability",
+#    "Env_Pol_1": "pollution",
+#    "Climate_1": "climate change",
+#    "Aliens_1": "invasive species",
+#    "Landuse_1": "landuse",
+#    "Exploit_1": "exploitation of natural resources"
+# }
+#
+#
+# EXPLAINING_FEATURE_NAMES = {
+#    x:x for x in ["GBIS", "NOIS", "APMP", "FosCO2", "CO2Em", "ConvVegToCrop", "BHI", "AQ", "EH", "NFL", "UP", "HDI", "LPI", "EPI", "GII", "SDG", "NRI", "FA", "AL", "GI"]
+# }
 
 
 # determining the number of observable patterns
