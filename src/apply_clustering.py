@@ -14,13 +14,17 @@ from scipy.spatial.distance import jensenshannon, correlation, euclidean
 from tqdm.contrib.concurrent import thread_map
 
 import config
+from visualize_result import ResultVisualizer
 
 # TODO: add caching!
 
 """
-draw_gap_statistic_plot(): outputs gap statistic evaluation on the observable to determine the number of observable patterns
-calculate_observable_patterns(): using config.NUMBER_OBSERVABLE_PATTERNS, it conducts the clustering on observables and plots a dendrogram
-calculate_explainable_distances(): depending on feature selection mode it outputs pairwise distances based on explainable features and plots a dendrogram
+draw_gap_statistic_plot(): outputs gap statistic evaluation on the observable 
+    to determine the number of observable patterns
+calculate_observable_patterns(): using config.NUMBER_OBSERVABLE_PATTERNS, 
+    it conducts the clustering on observables and plots a dendrogram
+calculate_explainable_distances(): depending on feature selection mode it outputs pairwise 
+    distances based on explainable features and plots a dendrogram
 """
 
 
@@ -183,7 +187,7 @@ class ClusteringApplier:
         df: pd.DataFrame, feature_names: List[str]
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
-        if not config.DISTANCE_MEASURE_FINGERPRINT in [
+        if config.DISTANCE_MEASURE_FINGERPRINT not in [
             "jensenshannon",
             "euclidean",
             "correlation",
@@ -292,6 +296,14 @@ class ClusteringApplier:
         )
         pw_norm_dist.to_excel(
             f"{output_path}{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
+        )
+
+        ResultVisualizer.plot_simple_radar_chart(
+            observable_patterns=[
+                df_cluster_median.loc[row, :].to_list()
+                for row in sorted(df_cluster_median.index)
+            ],
+            observable_labels=list(config.OBSERVABLE_FEATURE_NAMES.keys()),
         )
 
     @staticmethod

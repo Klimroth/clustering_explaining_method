@@ -34,22 +34,70 @@ class ResultVisualizer:
             df_explainable, explainable_features
         )
 
-        ResultVisualizer.make_regression_plot(df_explainable_distances, df_observable_distances)
+        ResultVisualizer.make_regression_plot(
+            df_explainable_distances, df_observable_distances
+        )
 
         # TODO
-        # read observable patterns and plot radar chart
-        # for each of the patterns make one radar plot (scaled to [0,1])
 
         # read fingerprints per group with respect to observable patterns and plot radar chart
         # read explainable patterns per group and plot radar chart
         # --> as a subplot per group: fingerprint | explainable pattern
         # --> call plot_radar_chart(..., title="groupname") for each group
 
+    @staticmethod
+    def plot_simple_radar_chart(
+        observable_patterns: List[List[float]], observable_labels: List[str]
+    ):
+        subplot_titles: List[str] = [
+            f"{config.OBSERVABLE_PATTERN_NAME} {j+1}"
+            for j in range(len(observable_patterns))
+        ]
+        fig = make_subplots(cols=3, subplot_titles=subplot_titles)
 
+        for j in range(len(observable_patterns)):
+            row = j // 3 + 1
+            col = j % 3 + 1
 
+            current_pattern: np.array = np.array(observable_patterns[j]) / np.sum(
+                np.array(observable_patterns[j])
+            )
+            fig.add_trace(
+                go.Scatterpolar(
+                    r=current_pattern,
+                    theta=observable_labels,
+                    fill="toself",
+                ),
+                row=row,
+                col=col,
+            )
+
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+            showlegend=False,
+            plot_bgcolor="rgba(0, 0, 0, 0)",
+            paper_bgcolor="rgba(0, 0, 0, 0)",
+            title=config.OBSERVABLE_PATTERN_NAME_PLURAL,
+        )
+
+        fig.update_layout(
+            {
+                "plot_bgcolor": "rgba(0, 0, 0, 0)",
+                "paper_bgcolor": "rgba(0, 0, 0, 0)",
+            }
+        )
+
+        output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        fig.write_image(
+            f"{output_path}{config.DATASET_NAME}-{config.OBSERVABLE_PATTERN_NAME_PLURAL}-{config.NUMBER_OBSERVABLE_PATTERNS}.png",
+            dpi=300,
+        )
 
     @staticmethod
-    def plot_radar_chart(
+    def plot_result_radar_chart(
         simplex_coordinates_fingerprint: List[float],
         categories_fingerprint: List[str],
         simplex_coordinates_explainable: List[float],
@@ -68,7 +116,7 @@ class ResultVisualizer:
         fig = make_subplots(
             rows=1,
             cols=2,
-            subplot_titles=("observable patterns", "explainable features"),
+            subplot_titles=["observable patterns", "explainable features"],
         )
 
         fig.add_trace(

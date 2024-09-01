@@ -19,7 +19,7 @@ class DataPreparator:
         for feature in feature_columns:
             scaling_values["feature"].append(feature)
             scaling_values["scaling"].append(np.max(df[feature].to_list()))
-        df = df.apply(lambda x: x / x.max(), axis=1)
+        df[feature_columns] = df[feature_columns].apply(lambda x: x / x.max(), axis=1)
 
         return df, scaling_values
 

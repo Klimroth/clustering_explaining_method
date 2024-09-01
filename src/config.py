@@ -9,6 +9,8 @@ OUTPUT_FOLDER_BASE = (
 GROUP_NAME = "Individual"
 OBSERVABLE_NAME = "observations (night)"
 DATASET_NAME = "biological-dataset"
+OBSERVABLE_PATTERN_NAME = "behavioral pattern"
+OBSERVABLE_PATTERN_NAME_PLURAL = "behavioral patterns"
 
 OBSERVABLE_FEATURE_NAMES = {
     "num_lhd": "# LHD phases",
@@ -36,6 +38,8 @@ EXPLAINING_FEATURE_NAMES = {
 # GROUP_NAME = "Country"
 # OBSERVABLE_NAME = "indices"
 # DATASET_NAME = "nature-dataset"
+# OBSERVABLE_PATTERN_NAME = "response type"
+# OBSERVABLE_PATTERN_NAME_PLURAL = "response types"
 #
 # OBSERVABLE_FEATURE_NAMES = {
 #    "Difference": "discrimination ability",
