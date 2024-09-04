@@ -54,7 +54,7 @@ class ResultVisualizer:
                 simplex_coordinates_fingerprint=df_fingerprint[
                     df_fingerprint[config.GROUP_NAME] == group_name
                 ][column_headings].to_list(),
-                categories_fingerprints=categories_fingerprints,
+                categories_fingerprint=categories_fingerprints,
                 simplex_coordinates_explainable=df_explainable[
                     df_explainable[config.GROUP_NAME] == group_name
                 ][explainable_features].to_list(),
