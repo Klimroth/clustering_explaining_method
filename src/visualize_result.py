@@ -38,12 +38,29 @@ class ResultVisualizer:
             df_explainable_distances, df_observable_distances
         )
 
-        # TODO
+        df_fingerprint: pd.DataFrame = pd.read_excel(
+            f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-fingerprint-observables-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
+        )
+        column_headings: List[int] = [
+            j + 1 for j in range(config.NUMBER_OBSERVABLE_PATTERNS)
+        ]
 
-        # read fingerprints per group with respect to observable patterns and plot radar chart
-        # read explainable patterns per group and plot radar chart
-        # --> as a subplot per group: fingerprint | explainable pattern
-        # --> call plot_radar_chart(..., title="groupname") for each group
+        categories_fingerprints: List[str] = [
+            f"{config.OBSERVABLE_PATTERN_NAME} {j}" for j in column_headings
+        ]
+        group_names: List[str] = sorted(df_fingerprint[config.GROUP_NAME].to_list())
+        for group_name in group_names:
+            ResultVisualizer.plot_result_radar_chart(
+                simplex_coordinates_fingerprint=df_fingerprint[
+                    df_fingerprint[config.GROUP_NAME] == group_name
+                ][column_headings].to_list(),
+                categories_fingerprints=categories_fingerprints,
+                simplex_coordinates_explainable=df_explainable[
+                    df_explainable[config.GROUP_NAME] == group_name
+                ][explainable_features].to_list(),
+                categories_explainable=explainable_features,
+                title=group_name,
+            )
 
     @staticmethod
     def plot_simple_radar_chart(

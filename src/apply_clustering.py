@@ -50,9 +50,9 @@ class ClusteringApplier:
     @staticmethod
     def read_explaining_features() -> pd.DataFrame | None:
         try:
-            df = pd.read_excel(config.INPUT_FILE_EXPLAINING_FEATURES)[
-                list(config.EXPLAINING_FEATURE_NAMES.keys())
-            ]
+            df = pd.read_excel(
+                f"{config.OUTPUT_FOLDER_BASE}base_data/{config.DATASET_NAME}_explainable_dataset_scaled.xlsx"
+            )[list(config.EXPLAINING_FEATURE_NAMES.keys())]
         except:
             print(f"File not valid {config.INPUT_FILE_EXPLAINING_FEATURES}")
             return None
