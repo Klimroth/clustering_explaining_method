@@ -68,7 +68,7 @@ USE_CACHED_CLUSTERING = True
 
 # distortion parameters
 DISTORTION_MEAN = 0
-DISTORTION_STD = 0.01
+DISTORTION_STD = 0.001
 
 # imputation
 NN_IMPUTATION_K = 10

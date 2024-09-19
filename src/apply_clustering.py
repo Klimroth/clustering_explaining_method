@@ -16,7 +16,6 @@ from tqdm.contrib.concurrent import thread_map
 import config
 from visualize_result import ResultVisualizer
 
-# TODO: add caching!
 
 """
 draw_gap_statistic_plot(): outputs gap statistic evaluation on the observable 
