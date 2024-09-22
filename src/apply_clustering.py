@@ -183,16 +183,16 @@ class ClusteringApplier:
 
     @staticmethod
     def calculate_pairwise_distances(
-        df: pd.DataFrame, feature_names: List[str]
+        df: pd.DataFrame, feature_names: List[str], distance: str
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
-        if config.DISTANCE_MEASURE_FINGERPRINT not in [
+        if distance not in [
             "jensenshannon",
             "euclidean",
             "correlation",
         ]:
             raise Exception(
-                "Invalid distance measure used to measure fingerprint similarity."
+                "Invalid distance measure used to measure similarity."
             )
 
         group_names: List[str] = df[config.GROUP_NAME].to_list()
@@ -262,7 +262,7 @@ class ClusteringApplier:
         df_fingerprint = ClusteringApplier._calculate_fingerprints(df_observable_data)
 
         pw_dist, pw_norm_dist = ClusteringApplier.calculate_pairwise_distances(
-            df_fingerprint, list(config.OBSERVABLE_FEATURE_NAMES.keys())
+            df_fingerprint, list(config.OBSERVABLE_FEATURE_NAMES.keys()), config.DISTANCE_MEASURE_FINGERPRINT
         )
 
         ClusteringApplier._plot_dendrogram_by_distance_matrix(
@@ -312,7 +312,7 @@ class ClusteringApplier:
         df_observable_distances: pd.DataFrame = args[2]
 
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
-            df_explainable, features
+            df_explainable, features, config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
         )
 
         x = df_explainable_distances.to_numpy().flatten()
@@ -422,7 +422,7 @@ class ClusteringApplier:
 
         # draw dendrogram of those explaining set
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
-            df_explainable, features
+            df_explainable, features, config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
         )
 
         ClusteringApplier._plot_dendrogram_by_distance_matrix(

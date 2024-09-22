@@ -31,7 +31,7 @@ class ResultVisualizer:
             f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
         )
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
-            df_explainable, explainable_features
+            df_explainable, explainable_features, config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
         )
 
         ResultVisualizer.make_regression_plot(

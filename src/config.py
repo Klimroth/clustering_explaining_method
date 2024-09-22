@@ -75,6 +75,7 @@ NN_IMPUTATION_K = 10
 
 # distance measure of fingerprints: jensenshannon, euclidean, correlation
 DISTANCE_MEASURE_FINGERPRINT = "jensenshannon"
+DISTANCE_MEASURE_EXPLAINABLE_FEATURES = "correlation"
 
 # mode of infering the optimal set of explaining features exact/heuristic
 INFERENCE_MODE_EXPLAINING_FEATURES = "exact"
