@@ -63,30 +63,6 @@ class ClusteringApplier:
         return df
 
     @staticmethod
-    def ___draw_gap_statistic_plot() -> None:
-
-        df: pd.DataFrame = ClusteringApplier._read_observable_data()
-
-        gs = GapStatistics(
-            algorithm=AgglomerativeClustering,
-            distance_metric="minkowski",
-            return_params=True,
-        )
-        num_colors: int = config.GAP_STATISTIC_CLUSTER_RANGE
-        cm = plt.get_cmap("gist_rainbow")
-        color_dict = {i: cm(1.0 * i / num_colors) for i in range(num_colors)}
-        gs.fit_predict(K=config.GAP_STATISTIC_CLUSTER_RANGE, X=df.to_numpy())
-        gs.plot(original_labels=df.columns, colors=color_dict)
-
-        ouput_folder: str = f"{config.OUTPUT_FOLDER_BASE}gapstat/"
-        if not os.path.exists(ouput_folder):
-            os.makedirs(ouput_folder)
-        plt.savefig(
-            f"{ouput_folder}{config.DATASET_NAME}_gap-statistic-plot.pdf",
-            bbox_inches="tight",
-        )
-
-    @staticmethod
     def draw_gap_statistic_plot() -> None:
 
         df: pd.DataFrame = ClusteringApplier._read_observable_data()
@@ -231,7 +207,7 @@ class ClusteringApplier:
                 if distance == "jensenshannon":
                     dist: float = 1.0 * jensenshannon(fingerprint_1, fingerprint_2)
                 elif distance == "correlation":
-                    dist = 1.0 * correlation(fingerprint_1, fingerprint_2)
+                    dist = 1.0 * correlation(fingerprint_1, fingerprint_2, centered=False)
                 else:
                     dist = 1.0 * euclidean(fingerprint_1, fingerprint_2)
                 distance_matrix[grp_i, grp_j] = dist
@@ -268,7 +244,7 @@ class ClusteringApplier:
                 if distance == "jensenshannon":
                     dist: float = 1.0 * jensenshannon(fingerprint_1, fingerprint_2)
                 elif distance == "correlation":
-                    dist = 1.0 * correlation(fingerprint_1, fingerprint_2)
+                    dist = 1.0 * correlation(fingerprint_1, fingerprint_2, centered=False)
                 else:
                     dist = 1.0 * euclidean(fingerprint_1, fingerprint_2)
                 distance_matrix[grp_i, grp_j] = dist
@@ -489,9 +465,12 @@ class ClusteringApplier:
         for feature in features:
             overview_dict[feature] = [1 if feature in optimal_feature_set else 0]
 
+        output_path = f"{config.OUTPUT_FOLDER_BASE}explaining_features/"
         output_file: str = (
             f"{config.OUTPUT_FOLDER_BASE}explaining_features/{config.DATASET_NAME}-optimal_explainable_features-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
         )
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
         pd.DataFrame(overview_dict).to_excel(output_file, index=False)
 
         # draw dendrogram of those explaining set
