@@ -10,13 +10,26 @@ from plotly.subplots import make_subplots
 import numpy as np
 
 import config
-from apply_clustering import ClusteringApplier
+#from apply_clustering import ClusteringApplier
+
+import warnings
+
+try:
+    import kaleido
+except:
+    warnings.warn('kaleido not found, try pip install --upgrade "kaleido==0.1.*"')
+
+if kaleido.__version__ != '0.1.0.post1':
+    warnings.warn(f'kaleido version {kaleido.__version__} may not be able to save the resulting plots, if you encounter problems try using version 0.1.0.post1 instead')
+
 
 
 class ResultVisualizer:
 
     @staticmethod
     def visualize_results():
+        pass
+        '''
         df_explainable: pd.DataFrame = ClusteringApplier.read_explaining_features()
 
         df_optimal_explainable: pd.DataFrame = pd.read_excel(
@@ -60,57 +73,47 @@ class ResultVisualizer:
                 ][explainable_features].to_list(),
                 categories_explainable=explainable_features,
                 title=group_name,
-            )
+            )'''
 
     @staticmethod
     def plot_simple_radar_chart(
-        observable_patterns: List[List[float]], observable_labels: List[str]
+        observable_patterns: List[List[float]], observable_labels: List[str],
+        max_fingerprints_per_col: int = 3
     ):
         subplot_titles: List[str] = [
             f"{config.OBSERVABLE_PATTERN_NAME} {j+1}"
             for j in range(len(observable_patterns))
         ]
-        fig = make_subplots(cols=3, subplot_titles=subplot_titles)
+
+        num_rows = int(np.ceil(len(observable_patterns)/max_fingerprints_per_col))
+        num_cols = min(len(observable_patterns), max_fingerprints_per_col)
+
+        fig = make_subplots(rows=num_rows, cols=num_cols, specs=[[{'type': 'polar'}]*num_cols]*num_rows, horizontal_spacing=0.2, vertical_spacing=0.0)
 
         for j in range(len(observable_patterns)):
-            row = j // 3 + 1
-            col = j % 3 + 1
-
+            row = j // max_fingerprints_per_col + 1
+            col = j % num_cols + 1
             current_pattern: np.array = np.array(observable_patterns[j]) / np.sum(
                 np.array(observable_patterns[j])
             )
-            fig.add_trace(
-                go.Scatterpolar(
-                    r=current_pattern,
-                    theta=observable_labels,
-                    fill="toself",
-                ),
-                row=row,
-                col=col,
-            )
+            fig.add_scatterpolar(r=current_pattern, theta=observable_labels, fill="toself", row=row, col=col)
 
         fig.update_layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
             showlegend=False,
             plot_bgcolor="rgba(0, 0, 0, 0)",
             paper_bgcolor="rgba(0, 0, 0, 0)",
             title=config.OBSERVABLE_PATTERN_NAME_PLURAL,
         )
 
-        fig.update_layout(
-            {
-                "plot_bgcolor": "rgba(0, 0, 0, 0)",
-                "paper_bgcolor": "rgba(0, 0, 0, 0)",
-            }
-        )
+        fig.update_polars(dict(radialaxis=dict(visible=True, range=[0,1], showticklabels=False)))
+        fig.update_layout(height=800, width=800)
 
         output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
         fig.write_image(
-            f"{output_path}{config.DATASET_NAME}-{config.OBSERVABLE_PATTERN_NAME_PLURAL}-{config.NUMBER_OBSERVABLE_PATTERNS}.png",
-            dpi=300,
+            f"{output_path}{config.DATASET_NAME}-{config.OBSERVABLE_PATTERN_NAME_PLURAL}-{config.NUMBER_OBSERVABLE_PATTERNS}.pdf",
         )
 
     @staticmethod

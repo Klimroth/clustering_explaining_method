@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from gapstatistics.gapstatistics import GapStatistics
 from sklearn.cluster import AgglomerativeClustering
+#from clustering import AgglomerativeClusteringWrapper as AgglomerativeClustering
+from clustering import OptimalK_Wrapper, agglomerative_clustering_function
 import matplotlib.pyplot as plt
 import scipy.cluster.hierarchy as sch
 from scipy.cluster.hierarchy import dendrogram, linkage
@@ -13,8 +15,10 @@ from scipy.spatial.distance import squareform
 from scipy.spatial.distance import jensenshannon, correlation, euclidean
 from tqdm.contrib.concurrent import thread_map
 
-import config
 from visualize_result import ResultVisualizer
+
+
+import config
 
 
 """
@@ -50,15 +54,16 @@ class ClusteringApplier:
     def read_explaining_features() -> pd.DataFrame | None:
         try:
             df = pd.read_excel(
-                f"{config.OUTPUT_FOLDER_BASE}base_data/{config.DATASET_NAME}_explainable_dataset_scaled.xlsx"
-            )[list(config.EXPLAINING_FEATURE_NAMES.keys())]
+                f"{config.OUTPUT_FOLDER_BASE}base_data/{config.DATASET_NAME}_explainable_dataset_scaled.xlsx",
+                index_col=0
+            )
         except:
             print(f"File not valid {config.INPUT_FILE_EXPLAINING_FEATURES}")
             return None
         return df
 
     @staticmethod
-    def draw_gap_statistic_plot() -> None:
+    def ___draw_gap_statistic_plot() -> None:
 
         df: pd.DataFrame = ClusteringApplier._read_observable_data()
 
@@ -77,6 +82,27 @@ class ClusteringApplier:
         if not os.path.exists(ouput_folder):
             os.makedirs(ouput_folder)
         plt.savefig(
+            f"{ouput_folder}{config.DATASET_NAME}_gap-statistic-plot.pdf",
+            bbox_inches="tight",
+        )
+
+    @staticmethod
+    def draw_gap_statistic_plot() -> None:
+
+        df: pd.DataFrame = ClusteringApplier._read_observable_data()
+
+        optimal_K = OptimalK_Wrapper(clusterer=agglomerative_clustering_function)
+
+        X = df.to_numpy()
+        cluster_range = np.arange(2, config.GAP_STATISTIC_CLUSTER_RANGE)
+        n_clusters = optimal_K.find_optimal_K(X, cluster_array=cluster_range)
+
+        fig = optimal_K.plot_gaps(AgglomerativeClustering, size = (30, 7))
+
+        ouput_folder: str = f"{config.OUTPUT_FOLDER_BASE}gapstat/"
+        if not os.path.exists(ouput_folder):
+            os.makedirs(ouput_folder)
+        fig.savefig(
             f"{ouput_folder}{config.DATASET_NAME}_gap-statistic-plot.pdf",
             bbox_inches="tight",
         )
@@ -169,7 +195,7 @@ class ClusteringApplier:
 
         for row in df.index:
             group_stat[df.loc[row, config.GROUP_NAME]][
-                int(df.loc[row, "pattern_type"])
+                int(df.loc[row, "pattern_type"]) + 1
             ] += 1
 
         for grp_name in group_stat.keys():
@@ -179,12 +205,49 @@ class ClusteringApplier:
                 ret[j].append(quantities[j] / N)
             ret[config.GROUP_NAME].append(grp_name)
 
-        return pd.DataFrame(ret)
+        return pd.DataFrame(ret).set_index(config.GROUP_NAME)
+    
+    @staticmethod
+    def calculate_pairwise_fingerprint_distances(
+            df: pd.DataFrame, distance: str
+        ) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
+        if distance not in [
+            "jensenshannon",
+            "euclidean",
+            "correlation",
+        ]:
+            raise Exception(
+                "Invalid distance measure used to measure similarity."
+            )
+        
+        distance_matrix: np.array = np.zeros((df.shape[0], df.shape[0]))
+        arr = df.to_numpy()
+
+        for grp_i in range(df.shape[0]):
+            for grp_j in range(df.shape[0]):     
+                fingerprint_1 = arr[grp_i]
+                fingerprint_2 = arr[grp_j]
+                if distance == "jensenshannon":
+                    dist: float = 1.0 * jensenshannon(fingerprint_1, fingerprint_2)
+                elif distance == "correlation":
+                    dist = 1.0 * correlation(fingerprint_1, fingerprint_2)
+                else:
+                    dist = 1.0 * euclidean(fingerprint_1, fingerprint_2)
+                distance_matrix[grp_i, grp_j] = dist
+
+        normalised_distance_matrix = distance_matrix / np.sum(distance_matrix)
+
+        return pd.DataFrame(
+            distance_matrix, columns=df.index, index=df.index
+        ), pd.DataFrame(
+            normalised_distance_matrix, columns=df.index, index=df.index, 
+        )
+    
     @staticmethod
     def calculate_pairwise_distances(
-        df: pd.DataFrame, feature_names: List[str], distance: str
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+            df: pd.DataFrame, feature_names: List[str], distance: str,
+        ) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
         if distance not in [
             "jensenshannon",
@@ -195,31 +258,27 @@ class ClusteringApplier:
                 "Invalid distance measure used to measure similarity."
             )
 
-        group_names: List[str] = df[config.GROUP_NAME].to_list()
-        distance_matrix: np.array = np.zeros((len(group_names), len(group_names)))
+        distance_matrix: np.array = np.zeros((df.shape[0], df.shape[0]))
+        arr = df.loc[:, feature_names].to_numpy()
 
-        for grp_1 in range(len(group_names)):
-            for grp_2 in range(len(group_names)):
-                fingerprint_1 = df[df[config.GROUP_NAME] == grp_1][
-                    feature_names
-                ].to_numpy()
-                fingerprint_2 = df[df[config.GROUP_NAME] == grp_2][
-                    feature_names
-                ].to_numpy()
-                if config.DISTANCE_MEASURE_FINGERPRINT == "jensenshannon":
+        for grp_i in range(df.shape[0]):
+            for grp_j in range(df.shape[0]):      
+                fingerprint_1 = arr[grp_i]
+                fingerprint_2 = arr[grp_j]
+                if distance == "jensenshannon":
                     dist: float = 1.0 * jensenshannon(fingerprint_1, fingerprint_2)
-                elif config.DISTANCE_MEASURE_FINGERPRINT == "correlation":
+                elif distance == "correlation":
                     dist = 1.0 * correlation(fingerprint_1, fingerprint_2)
                 else:
                     dist = 1.0 * euclidean(fingerprint_1, fingerprint_2)
-                distance_matrix[grp_1, grp_2] = dist
+                distance_matrix[grp_i, grp_j] = dist
 
         normalised_distance_matrix = distance_matrix / np.sum(distance_matrix)
 
         return pd.DataFrame(
-            distance_matrix, index=group_names, columns=group_names
+            distance_matrix, columns=df.index, index=df.index
         ), pd.DataFrame(
-            normalised_distance_matrix, index=group_names, columns=group_names
+            normalised_distance_matrix, columns=df.index, index=df.index, 
         )
 
     @staticmethod
@@ -229,21 +288,19 @@ class ClusteringApplier:
             read_only_feature_col=False
         )
         try:
-            clustering_data = df[
-                list(config.OBSERVABLE_FEATURE_NAMES.keys())
-            ].to_numpy()
+            clustering_data = df.loc[:, list(config.OBSERVABLE_FEATURE_NAMES.keys())]
         except:
             print(f"Error. Invalid input.")
             return None
 
         # dendrogram observables
         ClusteringApplier._plot_dendrogram(
-            df=df, x_label=config.OBSERVABLE_NAME, title=""
+            df=clustering_data, x_label=config.OBSERVABLE_NAME, title=""
         )
 
         # clustering
         clusterer = AgglomerativeClustering(
-            n_clusters=config.NUMBER_OBSERVABLE_PATTERNS, linkage="ward"
+            n_clusters=config.NUMBER_OBSERVABLE_PATTERNS, linkage="ward", compute_distances=True
         )
 
         clusterer.fit_predict(clustering_data)
@@ -258,11 +315,18 @@ class ClusteringApplier:
         )
 
         # fingerprints
-        df_observable_data = df[df["oversampled"] is False]
+        try:
+            # We keep both variants
+            # Note that this might be a compatibility issue
+            # For different versions of Panda
+            df_observable_data = df[df["oversampled"] == False]
+        except:
+            df_observable_data = df[df["oversampled"] is False]
+
         df_fingerprint = ClusteringApplier._calculate_fingerprints(df_observable_data)
 
-        pw_dist, pw_norm_dist = ClusteringApplier.calculate_pairwise_distances(
-            df_fingerprint, list(config.OBSERVABLE_FEATURE_NAMES.keys()), config.DISTANCE_MEASURE_FINGERPRINT
+        pw_dist, pw_norm_dist = ClusteringApplier.calculate_pairwise_fingerprint_distances(
+            df_fingerprint, config.DISTANCE_MEASURE_FINGERPRINT
         )
 
         ClusteringApplier._plot_dendrogram_by_distance_matrix(
@@ -281,20 +345,23 @@ class ClusteringApplier:
         df_cluster_median.to_excel(
             f"{output_path}{config.DATASET_NAME}-observable-patterns-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
             index_label="pattern_type",
+            index=True
         )
         df_observable_data.to_excel(
             f"{output_path}{config.DATASET_NAME}-cluster_assignment-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
-            index=False,
+            index=True,
         )
         df_fingerprint.to_excel(
             f"{output_path}{config.DATASET_NAME}-fingerprint-observables-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
-            index=False,
+            index=True,
         )
         pw_dist.to_excel(
-            f"{output_path}{config.DATASET_NAME}-distance-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
+            f"{output_path}{config.DATASET_NAME}-distance-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+            index=True
         )
         pw_norm_dist.to_excel(
-            f"{output_path}{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
+            f"{output_path}{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+            index=True
         )
 
         ResultVisualizer.plot_simple_radar_chart(
@@ -312,7 +379,7 @@ class ClusteringApplier:
         df_observable_distances: pd.DataFrame = args[2]
 
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
-            df_explainable, features, config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
+            df_explainable, features, config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES,
         )
 
         x = df_explainable_distances.to_numpy().flatten()
@@ -328,7 +395,7 @@ class ClusteringApplier:
     ) -> Tuple[List[str], float]:
 
         powerset_features = chain.from_iterable(
-            combinations(features, r) for r in range(1, len(features) + 1)
+            combinations(features, r) for r in range(2, len(features) + 1)
         )
         powerset_method_input = [
             (list(feature_set), df_explainable, df_observable_distances)
@@ -349,9 +416,10 @@ class ClusteringApplier:
 
         for index in range(len(correlation_coefficients)):
             if correlation_coefficients[index] == maximum_correlation:
-                if len(powerset_features[index]) < current_feature_size:
-                    current_feature_size = len(powerset_features[index])
-                    optimal_feature_set = powerset_features[index]
+                current_feature_set = powerset_method_input[index][0]
+                if len(current_feature_set) < current_feature_size:
+                    current_feature_size = len(current_feature_set)
+                    optimal_feature_set = current_feature_set
 
         return optimal_feature_set, maximum_correlation
 
@@ -389,9 +457,15 @@ class ClusteringApplier:
     def calculate_explainable_distances():
         df_explainable: pd.DataFrame = ClusteringApplier.read_explaining_features()
         df_observable_distances: pd.DataFrame = pd.read_excel(
-            f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
+            f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+            index_col=0
         )
         features: List[str] = list(config.EXPLAINING_FEATURE_NAMES.keys())
+
+        # Ensure that both datasets contain the same indices
+        valid_indices = np.intersect1d(df_explainable.index, df_observable_distances.index)
+        df_explainable = df_explainable.loc[valid_indices]
+        df_observable_distances = df_observable_distances.loc[valid_indices]
 
         if df_explainable is None or df_observable_distances is None:
             return
