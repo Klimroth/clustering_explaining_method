@@ -371,19 +371,17 @@ class ClusteringApplier:
     ) -> Tuple[List[str], float]:
 
         powerset_features = chain.from_iterable(
-            combinations(features, r) for r in range(2, len(features) + 1)
+            combinations(features, r) for r in range(1, len(features) + 1)
         )
         powerset_method_input = [
             (list(feature_set), df_explainable, df_observable_distances)
             for feature_set in powerset_features
         ]
-        correlation_coefficients: List[float] = sorted(
-            thread_map(
-                ClusteringApplier._get_correlation_coefficient,
-                powerset_method_input,
-                desc="",
-                max_workers=config.MAX_NUM_THREADS,
-            )
+        correlation_coefficients: List[float] = thread_map(
+            ClusteringApplier._get_correlation_coefficient,
+            powerset_method_input,
+            desc="",
+            max_workers=config.MAX_NUM_THREADS,
         )
 
         maximum_correlation: float = max(correlation_coefficients)
@@ -480,7 +478,7 @@ class ClusteringApplier:
 
         ClusteringApplier._plot_dendrogram_by_distance_matrix(
             mat=df_explainable_distances.to_numpy(),
-            labels=features,
+            labels=list(df_explainable_distances.index), #features,
             x_label=config.GROUP_NAME,
             y_label="Distance based on explainable features",
             title="Similarity based on the optimal set of explainable features",

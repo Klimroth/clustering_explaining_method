@@ -15,13 +15,14 @@ class DataPreparator:
     def apply_row_scaling(
         df: pd.DataFrame, feature_columns: List[str]
     ) -> Tuple[pd.DataFrame, Dict[str, List[float | str]]]:
+        output_df = df.copy()
         scaling_values: Dict[str, List[float | str]] = {"feature": [], "scaling": []}
         for feature in feature_columns:
             scaling_values["feature"].append(feature)
-            scaling_values["scaling"].append(np.max(df[feature].to_list()))
-        df[feature_columns] = df[feature_columns].apply(lambda x: x / x.max(), axis=1)
+            scaling_values["scaling"].append(np.max(output_df[feature].to_list()))
+        output_df[feature_columns] = output_df[feature_columns].apply(lambda x: x / x.max(), axis=0)
 
-        return df, scaling_values
+        return output_df, scaling_values
 
     @staticmethod
     def read_excel_sheet(
@@ -40,7 +41,7 @@ class DataPreparator:
     def apply_oversampling(df: pd.DataFrame, group_name: str) -> pd.DataFrame:
         max_group_size: int = df[group_name].value_counts().max()
         df["oversampled"] = False
-        upsampling_list: List[df.DataFrame] = [df]
+        upsampling_list: List[pd.DataFrame] = [df]
         for class_index, group in df.groupby(group_name):
             df_group_sample: pd.DataFrame = group.sample(
                 max_group_size - len(group), replace=True
@@ -64,7 +65,7 @@ class DataPreparator:
         distortion: np.array = np.random.normal(
             loc=config.DISTORTION_MEAN, scale=config.DISTORTION_STD, size=dim_df
         )
-        df[columns].iloc[:] += distortion
+        df.loc[:, columns] += distortion
         return df
 
     @staticmethod
@@ -127,9 +128,9 @@ class DataPreparator:
             )
 
             sample_size_df: pd.DataFrame = (
-                observable_df[observable_df["oversampled"] is False]
+                observable_df[observable_df["oversampled"] == False]
                 .groupby(config.GROUP_NAME)
-                .count()[list(config.EXPLAINING_FEATURE_NAMES.keys())[0]]
+                .count()[list(config.OBSERVABLE_FEATURE_NAMES.keys())[0]]
             )
             sample_size_df.columns = ["Sample size"]
 
@@ -153,7 +154,7 @@ class DataPreparator:
                 f"{save_folder}{config.DATASET_NAME}_observable_scaling_factors.xlsx",
                 index=False,
             )
-            sample_size_df.observable_df.to_excel(
+            sample_size_df.to_excel(
                 f"{save_folder}{config.DATASET_NAME}_sample_size.xlsx",
                 index=True,
             )
