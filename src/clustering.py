@@ -55,7 +55,7 @@ class OptimalK_Wrapper(OptimalK):
         ):
 
         """
-        Calculates KMeans optimal K using Gap Statistic from Tibshirani, Walther, Hastie
+        Calculates optimal K using Gap Statistic from Tibshirani, Walther, Hastie
         http://www.web.stanford.edu/~hastie/Papers/gap.pdf
         :param X - pandas dataframe or numpy array of data points of shape (n_samples, n_features)
         :param n_refs - int: Number of random reference data sets used as inertia reference to actual data.
@@ -136,7 +136,7 @@ class OptimalK_Wrapper(OptimalK):
     
         return self.n_clusters
     
-    def plot_gaps(self, model, size = (30, 10)):
+    def plot_gaps(self, model, knee, size = (30, 10)):
         """
         Plots the results of the last run optimal K search procedure.
         Four plots are printed:
@@ -163,28 +163,37 @@ class OptimalK_Wrapper(OptimalK):
         fig = plt.figure(figsize=size)
 
         # Dendrogram plot
-        plt.subplot(1, 3, 1)    
+        plt.subplot(1, 2, 1)    
         model = model(n_clusters=self.n_clusters, linkage='ward', compute_distances=True)
         model.fit(self.X)
 
-        cm = plt.get_cmap("gist_rainbow")
-        color_dict = {i: cm(1.0 * i / self.n_clusters) for i in range(self.n_clusters)}
+        #cm = plt.get_cmap("gist_rainbow")
+        #color_dict = {i: cm(1.0 * i / self.n_clusters) for i in range(self.n_clusters)}
         link_color_func = lambda k: f'C{int(k)}'
         plot_dendrogram(model, dendogram_function=fancy_dendrogram, truncate_mode = 'lastp', p = self.n_clusters, link_color_func = link_color_func)
 
         # Gap values plot
-        plt.subplot(1, 3, 2)
-        plt.plot(self.gap_df.n_clusters, self.gap_df.gap_value, linewidth=3)
+        plt.subplot(1, 2, 2)
+        plt.plot(self.gap_df.n_clusters, self.gap_df.gap_value, linewidth=2, label = 'data')
         plt.scatter(
             self.gap_df[self.gap_df.n_clusters == self.n_clusters].n_clusters,
             self.gap_df[self.gap_df.n_clusters == self.n_clusters].gap_value,
-            s=250,
+            s=95,
             c="r",
+            label = 'optimal-K'
+        )
+        plt.vlines(
+            knee, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="knee/elbow",
+            linewidth = 3, color = 'orange'
         )
         plt.grid(True)
         plt.xlabel("Cluster Count")
         plt.ylabel("Gap Value")
+        plt.legend(loc="best")
         plt.title("Gap Values by Cluster Count")
+
+        
+
 
         # diff plot
         if False:
@@ -195,20 +204,22 @@ class OptimalK_Wrapper(OptimalK):
             plt.title("Diff Values by Cluster Count")
             plt.show()
 
-        # Gap* plot
-        plt.subplot(1, 3, 3)
-        max_ix = self.gap_df[self.gap_df["gap*"] == self.gap_df["gap*"].max()].index[0]
-        plt.plot(self.gap_df.n_clusters, self.gap_df["gap*"], linewidth=3)
-        plt.scatter(
-            self.gap_df.loc[max_ix]["n_clusters"],
-            self.gap_df.loc[max_ix]["gap*"],
-            s=250,
-            c="r",
-        )
-        plt.grid(True)
-        plt.xlabel("Cluster Count")
-        plt.ylabel("Gap* Value")
-        plt.title("Gap* Values by Cluster Count")
+        # diff plot
+        if False:
+            # Gap* plot
+            plt.subplot(1, 3, 3)
+            max_ix = self.gap_df[self.gap_df["gap*"] == self.gap_df["gap*"].max()].index[0]
+            plt.plot(self.gap_df.n_clusters, self.gap_df["gap*"], linewidth=3)
+            plt.scatter(
+                self.gap_df.loc[max_ix]["n_clusters"],
+                self.gap_df.loc[max_ix]["gap*"],
+                s=250,
+                c="r",
+            )
+            plt.grid(True)
+            plt.xlabel("Cluster Count")
+            plt.ylabel("Gap* Value")
+            plt.title("Gap* Values by Cluster Count")
 
         # diff* plot
         if False:

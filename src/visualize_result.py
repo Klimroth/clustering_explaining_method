@@ -10,9 +10,9 @@ from plotly.subplots import make_subplots
 import numpy as np
 
 import config
-#from apply_clustering import ClusteringApplier
-
 import warnings
+
+from utils import minmax, calculate_homogeneity
 
 try:
     import kaleido
@@ -78,24 +78,42 @@ class ResultVisualizer:
     @staticmethod
     def plot_simple_radar_chart(
         observable_patterns: List[List[float]], observable_labels: List[str],
-        max_fingerprints_per_col: int = 3
+        max_fingerprints_per_col: int = 2
     ):
         subplot_titles: List[str] = [
             f"{config.OBSERVABLE_PATTERN_NAME} {j+1}"
             for j in range(len(observable_patterns))
         ]
 
-        num_rows = int(np.ceil(len(observable_patterns)/max_fingerprints_per_col))
-        num_cols = min(len(observable_patterns), max_fingerprints_per_col)
+        if config.SPIDERPLOT_SCALING == 'minmax':
+            scale = minmax
+        elif config.SPIDERPLOT_SCALING == 'none':
+            scale = lambda x: x
+        else:
+            warnings.warn(f'Unknown SPIDERPLOT_SCALING {config.SPIDERPLOT_SCALING}. No scaling will be used.')
+            scale = lambda x: x
+ 
+        scaled_observable_patterns = scale(observable_patterns)
 
-        fig = make_subplots(rows=num_rows, cols=num_cols, specs=[[{'type': 'polar'}]*num_cols]*num_rows, horizontal_spacing=0.2, vertical_spacing=0.0)
+        if np.min(scaled_observable_patterns) < 0:
+            plot_range = [-1, 1]
+        else:
+            plot_range = [0, 1]
 
-        for j in range(len(observable_patterns)):
+        num_rows = int(np.ceil(len(scaled_observable_patterns)/max_fingerprints_per_col))
+        num_cols = min(len(scaled_observable_patterns), max_fingerprints_per_col)
+
+        fig = make_subplots(
+            rows=num_rows, cols=num_cols, specs=[[{'type': 'polar'}]*num_cols]*num_rows,
+            horizontal_spacing=0.3, vertical_spacing=0.05,
+            subplot_titles=[f'Fingerprint {j+1} (homogeneity: {calculate_homogeneity(observable_patterns)[j]:.2f})' for j in range(len(scaled_observable_patterns))]
+        )
+
+        for j in range(len(scaled_observable_patterns)):
             row = j // max_fingerprints_per_col + 1
             col = j % num_cols + 1
-            current_pattern: np.array = np.array(observable_patterns[j]) / np.sum(
-                np.array(observable_patterns[j])
-            )
+            adj_scale = np.sum(np.array(observable_patterns[j])) if config.ADJ_SCALE else 1
+            current_pattern: np.array = np.array(scaled_observable_patterns[j]) / adj_scale
             fig.add_scatterpolar(r=current_pattern, theta=observable_labels, fill="toself", row=row, col=col)
 
         fig.update_layout(
@@ -105,8 +123,8 @@ class ResultVisualizer:
             title=config.OBSERVABLE_PATTERN_NAME_PLURAL,
         )
 
-        fig.update_polars(dict(radialaxis=dict(visible=True, range=[0,1], showticklabels=False)))
-        fig.update_layout(height=800, width=800)
+        fig.update_polars(dict(radialaxis=dict(visible=True, range=plot_range, showticklabels=False)))
+        fig.update_layout(height=500*num_rows, width=1000)
 
         output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
         if not os.path.exists(output_path):

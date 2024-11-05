@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from gapstatistics.gapstatistics import GapStatistics
 from sklearn.cluster import AgglomerativeClustering
-#from clustering import AgglomerativeClusteringWrapper as AgglomerativeClustering
 from clustering import OptimalK_Wrapper, agglomerative_clustering_function
 import matplotlib.pyplot as plt
 import scipy.cluster.hierarchy as sch
@@ -16,6 +15,7 @@ from scipy.spatial.distance import jensenshannon, correlation, euclidean
 from tqdm.contrib.concurrent import thread_map
 
 from visualize_result import ResultVisualizer
+from kneed import KneeLocator
 
 
 import config
@@ -41,7 +41,7 @@ class ClusteringApplier:
             f"{config.OUTPUT_FOLDER_BASE}base_data/{config.DATASET_NAME}_observable_dataset_scaled.xlsx"
         )
         try:
-            df: pd.DataFrame = pd.read_excel(required_file)
+            df: pd.DataFrame = pd.read_excel(required_file).set_index(config.GROUP_NAME)
             if read_only_feature_col:
                 df = df[list(config.OBSERVABLE_FEATURE_NAMES.keys())]
         except:
@@ -61,7 +61,7 @@ class ClusteringApplier:
             print(f"File not valid {config.INPUT_FILE_EXPLAINING_FEATURES}")
             return None
         return df
-
+    
     @staticmethod
     def draw_gap_statistic_plot() -> None:
 
@@ -71,9 +71,14 @@ class ClusteringApplier:
 
         X = df.to_numpy()
         cluster_range = np.arange(2, config.GAP_STATISTIC_CLUSTER_RANGE)
-        n_clusters = optimal_K.find_optimal_K(X, cluster_array=cluster_range)
+        n_clusters = optimal_K.find_optimal_K(X, cluster_array=cluster_range) 
+        # n_clusters will be stored in optimal_K.n_clusters
+        # and will be accessed this way in the next step.
 
-        fig = optimal_K.plot_gaps(AgglomerativeClustering, size = (30, 7))
+        kn = KneeLocator(optimal_K.gap_df.n_clusters, optimal_K.gap_df.gap_value, curve='concave', direction='increasing')
+        elblow_or_knee = kn.knee
+        
+        fig = optimal_K.plot_gaps(AgglomerativeClustering, knee=elblow_or_knee, size = (30, 7))
 
         ouput_folder: str = f"{config.OUTPUT_FOLDER_BASE}gapstat/"
         if not os.path.exists(ouput_folder):
@@ -83,11 +88,16 @@ class ClusteringApplier:
             bbox_inches="tight",
         )
 
+        return min(n_clusters, elblow_or_knee)
+
+
+
     @staticmethod
     def _plot_dendrogram_by_distance_matrix(
         mat: np.array, labels: List[str], x_label: str, y_label: str, title: str
     ):
-
+        
+        plt.figure(figsize=(20, 10))
         plt.cla()
         plt.clf()
 
@@ -126,6 +136,8 @@ class ClusteringApplier:
         y_label: str = "Ward's distance measure",
         no_labels: bool = True,
     ) -> None:
+        
+        plt.figure(figsize=(20, 10))
 
         plt.cla()
         plt.clf()
@@ -162,16 +174,16 @@ class ClusteringApplier:
         group_names: List[str] = list(set(df[config.GROUP_NAME].to_list()))
         num_clusters: int = max(df["pattern_type"].to_list()) + 1
         group_stat: Dict[str, Dict[int, int]] = {
-            grp_name: {j: 0 for j in range(1, num_clusters + 1)}
+            grp_name: {j: 0 for j in range(num_clusters)}
             for grp_name in group_names
         }
 
-        ret = {j: [] for j in range(1, num_clusters + 1)}
+        ret = {j: [] for j in range(num_clusters)}
         ret[config.GROUP_NAME] = []
 
         for row in df.index:
             group_stat[df.loc[row, config.GROUP_NAME]][
-                int(df.loc[row, "pattern_type"]) + 1
+                int(df.loc[row, "pattern_type"])
             ] += 1
 
         for grp_name in group_stat.keys():
@@ -181,7 +193,7 @@ class ClusteringApplier:
                 ret[j].append(quantities[j] / N)
             ret[config.GROUP_NAME].append(grp_name)
 
-        return pd.DataFrame(ret).set_index(config.GROUP_NAME)
+        return pd.DataFrame(ret).set_index(config.GROUP_NAME).sort_index()
     
     @staticmethod
     def calculate_pairwise_fingerprint_distances(
@@ -258,7 +270,7 @@ class ClusteringApplier:
         )
 
     @staticmethod
-    def calculate_observable_patterns() -> None:
+    def calculate_observable_patterns(_n_clusters = 2) -> None:
         # load data
         df: pd.DataFrame = ClusteringApplier._read_observable_data(
             read_only_feature_col=False
@@ -275,8 +287,12 @@ class ClusteringApplier:
         )
 
         # clustering
+        if str(config.NUMBER_OBSERVABLE_PATTERNS).lower() == 'auto':
+            n_clusters = _n_clusters
+        else:
+            n_clusters = config.NUMBER_OBSERVABLE_PATTERNS
         clusterer = AgglomerativeClustering(
-            n_clusters=config.NUMBER_OBSERVABLE_PATTERNS, linkage="ward", compute_distances=True
+            n_clusters=n_clusters, linkage="ward", compute_distances=True
         )
 
         clusterer.fit_predict(clustering_data)
@@ -299,11 +315,14 @@ class ClusteringApplier:
         except:
             df_observable_data = df[df["oversampled"] is False]
 
-        df_fingerprint = ClusteringApplier._calculate_fingerprints(df_observable_data)
+        df_fingerprint = ClusteringApplier._calculate_fingerprints(df_observable_data.reset_index())
 
         pw_dist, pw_norm_dist = ClusteringApplier.calculate_pairwise_fingerprint_distances(
             df_fingerprint, config.DISTANCE_MEASURE_FINGERPRINT
         )
+
+        assert pw_dist.index.to_list() == pw_dist.columns.to_list(), 'Something went wrong: Expected pw_dist index to be equal to its columns.'
+        assert pw_norm_dist.index.to_list() == pw_norm_dist.columns.to_list(), 'Something went wrong: Expected pw_norm_dist index to be equal to its columns.'
 
         ClusteringApplier._plot_dendrogram_by_distance_matrix(
             pw_norm_dist.to_numpy(),
@@ -323,6 +342,7 @@ class ClusteringApplier:
             index_label="pattern_type",
             index=True
         )
+
         df_observable_data.to_excel(
             f"{output_path}{config.DATASET_NAME}-cluster_assignment-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
             index=True,
@@ -341,10 +361,10 @@ class ClusteringApplier:
         )
 
         ResultVisualizer.plot_simple_radar_chart(
-            observable_patterns=[
+            observable_patterns= np.array([
                 df_cluster_median.loc[row, :].to_list()
                 for row in sorted(df_cluster_median.index)
-            ],
+            ]),
             observable_labels=list(config.OBSERVABLE_FEATURE_NAMES.keys()),
         )
 
@@ -377,15 +397,12 @@ class ClusteringApplier:
             (list(feature_set), df_explainable, df_observable_distances)
             for feature_set in powerset_features
         ]
-        correlation_coefficients: List[float] = sorted(
-            thread_map(
-                ClusteringApplier._get_correlation_coefficient,
-                powerset_method_input,
-                desc="",
-                max_workers=config.MAX_NUM_THREADS,
-            )
+        correlation_coefficients: List[float] = thread_map(
+            ClusteringApplier._get_correlation_coefficient,
+            powerset_method_input,
+            max_workers=config.MAX_NUM_THREADS,
         )
-
+        
         maximum_correlation: float = max(correlation_coefficients)
         optimal_feature_set: List[str] = features
         current_feature_size = len(features)
@@ -440,8 +457,11 @@ class ClusteringApplier:
 
         # Ensure that both datasets contain the same indices
         valid_indices = np.intersect1d(df_explainable.index, df_observable_distances.index)
+        valid_indices.sort()
         df_explainable = df_explainable.loc[valid_indices]
         df_observable_distances = df_observable_distances.loc[valid_indices]
+
+        assert df_observable_distances.index.to_list() == df_observable_distances.columns.to_list(), 'Something went wrong: Expected df_observable_distances index to be equal to its columns.'
 
         if df_explainable is None or df_observable_distances is None:
             return
@@ -480,7 +500,7 @@ class ClusteringApplier:
 
         ClusteringApplier._plot_dendrogram_by_distance_matrix(
             mat=df_explainable_distances.to_numpy(),
-            labels=features,
+            labels=list(df_explainable_distances.index),
             x_label=config.GROUP_NAME,
             y_label="Distance based on explainable features",
             title="Similarity based on the optimal set of explainable features",

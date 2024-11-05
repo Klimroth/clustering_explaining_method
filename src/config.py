@@ -1,9 +1,9 @@
 # basic configuration
-INPUT_FILE_OBSERVABLE_FEATURES = "F:/Programmierung/Dierkes/evaluation_cluster_based/data/biological_set_raw_data.xlsx"
-INPUT_FILE_EXPLAINING_FEATURES = "F:/Programmierung/Dierkes/evaluation_cluster_based/data/biological_set_explaining_features.xlsx"
+INPUT_FILE_OBSERVABLE_FEATURES = "C:/Projekte/clustering_explaining_method/data/biological_set_raw_data.xlsx"
+INPUT_FILE_EXPLAINING_FEATURES = "C:/Projekte/clustering_explaining_method/data/biological_set_explaining_features.xlsx"
 
 OUTPUT_FOLDER_BASE = (
-    "F:/Programmierung/Dierkes/evaluation_cluster_based/results/naturverbundenheit/"
+    'C:/Projekte/clustering_explaining_method/results/naturverbundenheit/'
 )
 
 GROUP_NAME = "Individual"
@@ -56,15 +56,17 @@ EXPLAINING_FEATURE_NAMES = {
 # }
 
 
-# determining the number of observable patterns
+# determining the maximum number of observable patterns
 GAP_STATISTIC_CLUSTER_RANGE = 10
 
 # pattern calculation
-NUMBER_OBSERVABLE_PATTERNS = 5
+# Either a number or 'auto'
+# If 'auto' is chosen, the algorithm will take the minimum from the gap-statistic and an elbow-estimate 
+NUMBER_OBSERVABLE_PATTERNS = 'auto'
 
 # if files already exist, do not compute them again
-USE_CACHED_DATASET = True
-USE_CACHED_CLUSTERING = True
+USE_CACHED_DATASET = False
+USE_CACHED_CLUSTERING = False
 
 # distortion parameters
 DISTORTION_MEAN = 0
@@ -82,3 +84,11 @@ INFERENCE_MODE_EXPLAINING_FEATURES = "exact"
 
 # maximum parallel threads
 MAX_NUM_THREADS = 6
+
+# The spiderplots will be scaled before plotting
+# One of 'minmax', 'none'
+SPIDERPLOT_SCALING = 'none'
+
+# If True, the fingerprints in the spiderplots will be rescaled
+# So that the sum of all vectors will be 1.
+ADJ_SCALE = False
