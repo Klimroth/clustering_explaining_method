@@ -1,9 +1,9 @@
 # basic configuration
-INPUT_FILE_OBSERVABLE_FEATURES = "C:/Projekte/clustering_explaining_method/data/biological_set_raw_data.xlsx"
-INPUT_FILE_EXPLAINING_FEATURES = "C:/Projekte/clustering_explaining_method/data/biological_set_explaining_features.xlsx"
+INPUT_FILE_OBSERVABLE_FEATURES = "../data/biological_set_raw_data.xlsx"
+INPUT_FILE_EXPLAINING_FEATURES = "../data/biological_set_explaining_features.xlsx"
 
 OUTPUT_FOLDER_BASE = (
-    'C:/Projekte/clustering_explaining_method/results/naturverbundenheit/'
+    '../results/naturverbundenheit/'
 )
 
 GROUP_NAME = "Individual"
