@@ -64,7 +64,8 @@ class DataPreparator:
         distortion: np.array = np.random.normal(
             loc=config.DISTORTION_MEAN, scale=config.DISTORTION_STD, size=dim_df
         )
-        df[columns].iloc[:] += distortion
+        df[columns] = df[columns].astype(np.float64)
+        df.loc[:, columns] += distortion
         return df
 
     @staticmethod
@@ -126,11 +127,20 @@ class DataPreparator:
                 DataPreparator.get_observable_dataframe()
             )
 
-            sample_size_df: pd.DataFrame = (
-                observable_df[observable_df["oversampled"] is False]
-                .groupby(config.GROUP_NAME)
-                .count()[list(config.EXPLAINING_FEATURE_NAMES.keys())[0]]
-            )
+            # Pandas seems to work differently
+            # Depending on its version
+            try:
+                sample_size_df: pd.DataFrame = (
+                    observable_df[observable_df["oversampled"] == False]
+                    .groupby(config.GROUP_NAME)
+                    .count()[list(config.OBSERVABLE_FEATURE_NAMES.keys())[0]]
+                )
+            except:
+                sample_size_df: pd.DataFrame = (
+                    observable_df[observable_df["oversampled"] is False]
+                    .groupby(config.GROUP_NAME)
+                    .count()[list(config.OBSERVABLE_FEATURE_NAMES.keys())[0]]
+                )
             sample_size_df.columns = ["Sample size"]
 
             if not os.path.exists(save_folder):
@@ -153,7 +163,7 @@ class DataPreparator:
                 f"{save_folder}{config.DATASET_NAME}_observable_scaling_factors.xlsx",
                 index=False,
             )
-            sample_size_df.observable_df.to_excel(
+            sample_size_df.to_excel(
                 f"{save_folder}{config.DATASET_NAME}_sample_size.xlsx",
                 index=True,
             )
