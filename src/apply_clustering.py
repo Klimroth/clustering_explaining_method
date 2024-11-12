@@ -63,14 +63,21 @@ class ClusteringApplier:
         return df
     
     @staticmethod
-    def draw_gap_statistic_plot() -> None:
+    def draw_gap_statistic_plot(
+        use_config:bool=True, df_observable:pd.DataFrame=None,
+        gap_statistic_cluster_range:int=10, observed_features=List[str]
+        ) -> int:
 
-        df: pd.DataFrame = ClusteringApplier._read_observable_data()
+        if use_config:
+            df: pd.DataFrame = ClusteringApplier._read_observable_data()
+            gap_statistic_cluster_range = config.GAP_STATISTIC_CLUSTER_RANGE
+        else:
+            df = df_observable.loc[:, observed_features]
 
         optimal_K = OptimalK_Wrapper(clusterer=agglomerative_clustering_function)
 
         X = df.to_numpy()
-        cluster_range = np.arange(2, config.GAP_STATISTIC_CLUSTER_RANGE)
+        cluster_range = np.arange(2, gap_statistic_cluster_range)
         n_clusters = optimal_K.find_optimal_K(X, cluster_array=cluster_range) 
         # n_clusters will be stored in optimal_K.n_clusters
         # and will be accessed this way in the next step.
@@ -80,13 +87,14 @@ class ClusteringApplier:
         
         fig = optimal_K.plot_gaps(AgglomerativeClustering, knee=elblow_or_knee, size = (30, 7))
 
-        ouput_folder: str = f"{config.OUTPUT_FOLDER_BASE}gapstat/"
-        if not os.path.exists(ouput_folder):
-            os.makedirs(ouput_folder)
-        fig.savefig(
-            f"{ouput_folder}{config.DATASET_NAME}_gap-statistic-plot.pdf",
-            bbox_inches="tight",
-        )
+        if use_config:
+            ouput_folder: str = f"{config.OUTPUT_FOLDER_BASE}gapstat/"
+            if not os.path.exists(ouput_folder):
+                os.makedirs(ouput_folder)
+            fig.savefig(
+                f"{ouput_folder}{config.DATASET_NAME}_gap-statistic-plot.pdf",
+                bbox_inches="tight",
+            )
 
         return min(n_clusters, elblow_or_knee)
 
@@ -94,10 +102,11 @@ class ClusteringApplier:
 
     @staticmethod
     def _plot_dendrogram_by_distance_matrix(
-        mat: np.array, labels: List[str], x_label: str, y_label: str, title: str
-    ):
+        mat: np.array, labels: List[str], x_label: str, y_label: str, title: str,
+        use_config:bool=True
+    )->None|plt.Figure:
         
-        plt.figure(figsize=(20, 10))
+        fig = plt.figure(figsize=(20, 10))
         plt.cla()
         plt.clf()
 
@@ -116,17 +125,20 @@ class ClusteringApplier:
         plt.xlabel(x_label)
         plt.ylabel(y_label)
 
-        output_path = f"{config.OUTPUT_FOLDER_BASE}dendrogram/"
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-
-        plt.savefig(
-            f"{output_path}{config.DATASET_NAME}_dendrogram-{x_label}-{y_label}.pdf",
-            format="pdf",
-            dpi=300,
-            bbox_inches="tight",
-        )
-        plt.close()
+        if use_config:
+            output_path = f"{config.OUTPUT_FOLDER_BASE}dendrogram/"
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            plt.savefig(
+                f"{output_path}{config.DATASET_NAME}_dendrogram-{x_label}-{y_label}.pdf",
+                format="pdf",
+                dpi=300,
+                bbox_inches="tight",
+            )
+            plt.close()
+            return None
+        else:
+            return fig
 
     @staticmethod
     def _plot_dendrogram(
@@ -135,6 +147,7 @@ class ClusteringApplier:
         title: str,
         y_label: str = "Ward's distance measure",
         no_labels: bool = True,
+        use_config:bool = True
     ) -> None:
         
         plt.figure(figsize=(20, 10))
@@ -156,22 +169,26 @@ class ClusteringApplier:
         plt.xlabel(x_label)
         plt.ylabel(y_label)
 
-        output_path = f"{config.OUTPUT_FOLDER_BASE}dendrogram/"
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+        if use_config:
+            output_path = f"{config.OUTPUT_FOLDER_BASE}dendrogram/"
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
 
-        plt.savefig(
-            f"{output_path}{config.DATASET_NAME}_dendrogram-{x_label}-{y_label}.pdf",
-            format="pdf",
-            dpi=300,
-            bbox_inches="tight",
-        )
-        plt.close()
+            plt.savefig(
+                f"{output_path}{config.DATASET_NAME}_dendrogram-{x_label}-{y_label}.pdf",
+                format="pdf",
+                dpi=300,
+                bbox_inches="tight",
+            )
+            plt.close()
 
     @staticmethod
-    def _calculate_fingerprints(df: pd.DataFrame) -> pd.DataFrame:
+    def _calculate_fingerprints(df: pd.DataFrame, use_config:bool=True, group_name='') -> pd.DataFrame:
 
-        group_names: List[str] = list(set(df[config.GROUP_NAME].to_list()))
+        if use_config:
+            group_name = config.GROUP_NAME
+        
+        group_names: List[str] = list(set(df[group_name].to_list()))
         num_clusters: int = max(df["pattern_type"].to_list()) + 1
         group_stat: Dict[str, Dict[int, int]] = {
             grp_name: {j: 0 for j in range(num_clusters)}
@@ -179,10 +196,10 @@ class ClusteringApplier:
         }
 
         ret = {j: [] for j in range(num_clusters)}
-        ret[config.GROUP_NAME] = []
+        ret[group_name] = []
 
         for row in df.index:
-            group_stat[df.loc[row, config.GROUP_NAME]][
+            group_stat[df.loc[row, group_name]][
                 int(df.loc[row, "pattern_type"])
             ] += 1
 
@@ -191,9 +208,9 @@ class ClusteringApplier:
             N: int = np.sum(list(quantities.values()))
             for j in quantities.keys():
                 ret[j].append(quantities[j] / N)
-            ret[config.GROUP_NAME].append(grp_name)
+            ret[group_name].append(grp_name)
 
-        return pd.DataFrame(ret).set_index(config.GROUP_NAME).sort_index()
+        return pd.DataFrame(ret).set_index(group_name).sort_index()
     
     @staticmethod
     def calculate_pairwise_fingerprint_distances(
@@ -270,27 +287,53 @@ class ClusteringApplier:
         )
 
     @staticmethod
-    def calculate_observable_patterns(_n_clusters = 2) -> None:
+    def calculate_observable_patterns(
+        df_observable_data:pd.DataFrame=None,
+        _n_clusters:int = 2,
+        use_config:bool=True,
+        observable_name:str = '',
+        observable_feature_names:List[str]|None=None,
+        number_observable_patterns:str = 'auto',
+        distance_measure_fingerprint:str = 'jensenshannon',
+        group_name:str = '',
+        observable_pattern_name:str = 'Name',
+        spiderplot_scaling:str = 'none',
+        plot_title:str = 'Title',
+        scale_adjustment:bool = True
+        ) -> dict:
         # load data
-        df: pd.DataFrame = ClusteringApplier._read_observable_data(
-            read_only_feature_col=False
-        )
+
+        if use_config:
+            observable_name = config.OBSERVABLE_NAME
+            observable_feature_names = config.OBSERVABLE_FEATURE_NAMES
+            number_observable_patterns = config.NUMBER_OBSERVABLE_PATTERNS
+            distance_measure_fingerprint = config.DISTANCE_MEASURE_FINGERPRINT
+            group_name=config.GROUP_NAME
+            plot_title = config.OBSERVABLE_PATTERN_NAME_PLURAL
+            df: pd.DataFrame = ClusteringApplier._read_observable_data(
+                read_only_feature_col=False
+            )
+            selected_features = list(observable_feature_names.keys()) 
+        else:
+            df = df_observable_data
+            selected_features = observable_feature_names
+        
         try:
-            clustering_data = df.loc[:, list(config.OBSERVABLE_FEATURE_NAMES.keys())]
+            clustering_data = df.loc[:, selected_features]
         except:
             print(f"Error. Invalid input.")
             return None
 
         # dendrogram observables
         ClusteringApplier._plot_dendrogram(
-            df=clustering_data, x_label=config.OBSERVABLE_NAME, title=""
+            df=clustering_data, x_label=observable_name, title="", use_config=use_config
         )
 
         # clustering
-        if str(config.NUMBER_OBSERVABLE_PATTERNS).lower() == 'auto':
+        if str(number_observable_patterns).lower() == 'auto':
             n_clusters = _n_clusters
         else:
-            n_clusters = config.NUMBER_OBSERVABLE_PATTERNS
+            n_clusters = number_observable_patterns
         clusterer = AgglomerativeClustering(
             n_clusters=n_clusters, linkage="ward", compute_distances=True
         )
@@ -301,7 +344,7 @@ class ClusteringApplier:
         df["pattern_type"] = cluster_labels
 
         df_cluster_median: pd.DataFrame = (
-            df.copy()[list(config.OBSERVABLE_FEATURE_NAMES.keys()) + ["pattern_type"]]
+            df.copy()[selected_features + ["pattern_type"]]
             .groupby("pattern_type")
             .median()
         )
@@ -315,92 +358,134 @@ class ClusteringApplier:
         except:
             df_observable_data = df[df["oversampled"] is False]
 
-        df_fingerprint = ClusteringApplier._calculate_fingerprints(df_observable_data.reset_index())
+        df_fingerprint = ClusteringApplier._calculate_fingerprints(
+            df_observable_data.reset_index(),
+            use_config=use_config,
+            group_name=group_name
+        )
 
         pw_dist, pw_norm_dist = ClusteringApplier.calculate_pairwise_fingerprint_distances(
-            df_fingerprint, config.DISTANCE_MEASURE_FINGERPRINT
+            df_fingerprint, distance_measure_fingerprint
         )
 
         assert pw_dist.index.to_list() == pw_dist.columns.to_list(), 'Something went wrong: Expected pw_dist index to be equal to its columns.'
         assert pw_norm_dist.index.to_list() == pw_norm_dist.columns.to_list(), 'Something went wrong: Expected pw_norm_dist index to be equal to its columns.'
 
-        ClusteringApplier._plot_dendrogram_by_distance_matrix(
+        dendrogram = ClusteringApplier._plot_dendrogram_by_distance_matrix(
             pw_norm_dist.to_numpy(),
             labels=pw_norm_dist.columns,
-            x_label=config.GROUP_NAME,
+            use_config=use_config,
+            x_label=group_name,
             y_label="Distance of fingerprints",
             title="",
         )
+        
+        if use_config:
 
-        # write output
-        output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+            # write output
+            output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
 
-        df_cluster_median.to_excel(
-            f"{output_path}{config.DATASET_NAME}-observable-patterns-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
-            index_label="pattern_type",
-            index=True
-        )
+            df_cluster_median.to_excel(
+                f"{output_path}{config.DATASET_NAME}-observable-patterns-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+                index_label="pattern_type",
+                index=True
+            )
 
-        df_observable_data.to_excel(
-            f"{output_path}{config.DATASET_NAME}-cluster_assignment-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
-            index=True,
-        )
-        df_fingerprint.to_excel(
-            f"{output_path}{config.DATASET_NAME}-fingerprint-observables-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
-            index=True,
-        )
-        pw_dist.to_excel(
-            f"{output_path}{config.DATASET_NAME}-distance-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
-            index=True
-        )
-        pw_norm_dist.to_excel(
-            f"{output_path}{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
-            index=True
-        )
-
-        ResultVisualizer.plot_simple_radar_chart(
+            df_observable_data.to_excel(
+                f"{output_path}{config.DATASET_NAME}-cluster_assignment-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+                index=True,
+            )
+            df_fingerprint.to_excel(
+                f"{output_path}{config.DATASET_NAME}-fingerprint-observables-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+                index=True,
+            )
+            pw_dist.to_excel(
+                f"{output_path}{config.DATASET_NAME}-distance-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+                index=True
+            )
+            pw_norm_dist.to_excel(
+                f"{output_path}{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+                index=True
+            )
+            
+        fig = ResultVisualizer.plot_simple_radar_chart(
             observable_patterns= np.array([
                 df_cluster_median.loc[row, :].to_list()
                 for row in sorted(df_cluster_median.index)
             ]),
-            observable_labels=list(config.OBSERVABLE_FEATURE_NAMES.keys()),
+            observable_labels=selected_features,
+            use_config=use_config,
+            observable_pattern_name=observable_pattern_name,
+            spiderplot_scaling=spiderplot_scaling,
+            observable_pattern_name_plural=plot_title,
+            scale_adjustment=scale_adjustment  
         )
+
+        output = {
+                'df_cluster_median': df_cluster_median,
+                'df_observable_data': df_observable_data,
+                'df_fingerprint': df_fingerprint,
+                'pw_dist': pw_dist,
+                'pw_norm_dist': pw_norm_dist,
+                'spider_plots': fig,
+                'fingerprint_distance_plots': dendrogram
+            }
+
+        return output
 
     @staticmethod
     def _get_correlation_coefficient(args) -> float:
         features: List[str] = args[0]
         df_explainable: pd.DataFrame = args[1]
         df_observable_distances: pd.DataFrame = args[2]
+        penalty_size: float = args[3]
+        distance_measure = args[4]
 
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
-            df_explainable, features, config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES,
+            df_explainable, features, distance_measure,
         )
 
         x = df_explainable_distances.to_numpy().flatten()
         y = df_observable_distances.to_numpy().flatten()
 
-        return float(np.corrcoef(x, y)[0, 1])
+        k = len(features)
+        r = float(np.corrcoef(x, y)[0, 1])
+        r_tilde = r - penalty_size*k
+        
+        return r_tilde
 
     @staticmethod
     def _feature_selection_exhaustive(
         df_explainable: pd.DataFrame,
         df_observable_distances: pd.DataFrame,
         features: List[str],
+        use_config:bool=True,
+        max_num_threads:int=4,
+        sparsity_parameter:float=0.,
+        distance_measure='correlation'
+
+
     ) -> Tuple[List[str], float]:
+        
+        if use_config:
+            max_num_threads = config.MAX_NUM_THREADS
+            sparsity_parameter = config.SPARSITY
+            distance_measure = config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
 
         powerset_features = chain.from_iterable(
             combinations(features, r) for r in range(2, len(features) + 1)
         )
         powerset_method_input = [
-            (list(feature_set), df_explainable, df_observable_distances)
+            [
+                list(feature_set), df_explainable, df_observable_distances, sparsity_parameter, distance_measure]
             for feature_set in powerset_features
         ]
         correlation_coefficients: List[float] = thread_map(
             ClusteringApplier._get_correlation_coefficient,
             powerset_method_input,
-            max_workers=config.MAX_NUM_THREADS,
+            max_workers=max_num_threads,
         )
         
         maximum_correlation: float = max(correlation_coefficients)
@@ -421,6 +506,8 @@ class ClusteringApplier:
         df_explainable: pd.DataFrame,
         df_observable_distances: pd.DataFrame,
         features: List[str],
+        penalty_size: float,
+        distance_measure: str
     ) -> Tuple[List[str], float]:
         currently_used_features: List[str] = []
         remaining_features: List[str] = features
@@ -434,6 +521,8 @@ class ClusteringApplier:
                         currently_used_features + [feature],
                         df_explainable,
                         df_observable_distances,
+                        penalty_size,
+                        distance_measure
                     ]
                 )
                 if feature_coeff > current_correlation_coefficient:
@@ -447,13 +536,32 @@ class ClusteringApplier:
         return currently_used_features, current_correlation_coefficient
 
     @staticmethod
-    def calculate_explainable_distances():
-        df_explainable: pd.DataFrame = ClusteringApplier.read_explaining_features()
-        df_observable_distances: pd.DataFrame = pd.read_excel(
-            f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
-            index_col=0
-        )
-        features: List[str] = list(config.EXPLAINING_FEATURE_NAMES.keys())
+    def calculate_explainable_distances(
+        use_config:bool=True,
+        df_explainable:pd.DataFrame|None=None,
+        df_observable_distances:pd.DataFrame|None=None,
+        explaining_features: List[str]|None=None,
+        method:str = 'exact',
+        distance_measure:str = 'correlation',
+        max_num_threads:int=6,
+        sparsity_parameter:float=0.,
+        group_name:str='Index'
+    ) -> dict:
+        if use_config:
+            df_explainable: pd.DataFrame = ClusteringApplier.read_explaining_features()
+            df_observable_distances: pd.DataFrame = pd.read_excel(
+                f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx",
+                index_col=0
+            )
+            features: List[str] = list(config.EXPLAINING_FEATURE_NAMES.keys())
+            method = config.INFERENCE_MODE_EXPLAINING_FEATURES
+            distance_measure = config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
+            max_num_threads=config.MAX_NUM_THREADS
+            sparsity_parameter=config.SPARSITY
+        else:
+            features = explaining_features
+            if group_name in df_explainable.columns:
+                df_explainable.set_index(group_name, inplace=True)
 
         # Ensure that both datasets contain the same indices
         valid_indices = np.intersect1d(df_explainable.index, df_observable_distances.index)
@@ -465,17 +573,27 @@ class ClusteringApplier:
 
         if df_explainable is None or df_observable_distances is None:
             return
-
-        if config.INFERENCE_MODE_EXPLAINING_FEATURES == "exact":
+        
+        if method == "exact":
             optimal_feature_set, maximum_correlation = (
                 ClusteringApplier._feature_selection_exhaustive(
-                    df_explainable, df_observable_distances, features
+                    df_explainable=df_explainable,
+                    df_observable_distances=df_observable_distances,
+                    features=features,
+                    use_config=use_config,
+                    distance_measure=distance_measure,
+                    max_num_threads=max_num_threads,
+                    sparsity_parameter=sparsity_parameter, 
                 )
             )
         else:
             optimal_feature_set, maximum_correlation = (
                 ClusteringApplier._feature_selection_greedy(
-                    df_explainable, df_observable_distances, features
+                    df_explainable=df_explainable,
+                    df_observable_distances=df_observable_distances,
+                    features=features,
+                    penalty_size=sparsity_parameter,
+                    distance_measure=distance_measure
                 )
             )
 
@@ -485,23 +603,40 @@ class ClusteringApplier:
         for feature in features:
             overview_dict[feature] = [1 if feature in optimal_feature_set else 0]
 
-        output_path = f"{config.OUTPUT_FOLDER_BASE}explaining_features/"
-        output_file: str = (
-            f"{config.OUTPUT_FOLDER_BASE}explaining_features/{config.DATASET_NAME}-optimal_explainable_features-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
-        )
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-        pd.DataFrame(overview_dict).to_excel(output_file, index=False)
+        overview_df = pd.DataFrame(overview_dict)
+
+        if use_config:
+            output_path = f"{config.OUTPUT_FOLDER_BASE}explaining_features/"
+            output_file: str = (
+                f"{config.OUTPUT_FOLDER_BASE}explaining_features/{config.DATASET_NAME}-optimal_explainable_features-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
+            )
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            overview_df.to_excel(output_file, index=False)
 
         # draw dendrogram of those explaining set
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
-            df_explainable, features, config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
+            df_explainable, features, distance_measure
         )
 
-        ClusteringApplier._plot_dendrogram_by_distance_matrix(
+        dendrogram = ClusteringApplier._plot_dendrogram_by_distance_matrix(
             mat=df_explainable_distances.to_numpy(),
             labels=list(df_explainable_distances.index),
-            x_label=config.GROUP_NAME,
+            use_config=use_config,
+            x_label=group_name,
             y_label="Distance based on explainable features",
             title="Similarity based on the optimal set of explainable features",
         )
+
+        output = {
+            'overview_df': overview_df,
+            'df_explainable_distances': df_explainable_distances,
+            'dendrogram': dendrogram,  
+            'optimal_feature_set': optimal_feature_set      
+        }
+
+        return output
+
+        
+
+        

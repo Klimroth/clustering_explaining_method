@@ -78,19 +78,32 @@ class ResultVisualizer:
     @staticmethod
     def plot_simple_radar_chart(
         observable_patterns: List[List[float]], observable_labels: List[str],
-        max_fingerprints_per_col: int = 2
+        max_fingerprints_per_col: int = 2,
+        use_config:bool = True,
+        observable_pattern_name:str = 'Name',
+        spiderplot_scaling:str = 'none',
+        observable_pattern_name_plural:str = 'Names',
+        scale_adjustment:bool = True
     ):
+        
+        if use_config:
+            observable_pattern_name = config.OBSERVABLE_PATTERN_NAME
+            spiderplot_scaling = config.SPIDERPLOT_SCALING
+            observable_pattern_name_plural = config.OBSERVABLE_PATTERN_NAME_PLURAL
+            scale_adjustment = config.ADJ_SCALE
+        
+
         subplot_titles: List[str] = [
-            f"{config.OBSERVABLE_PATTERN_NAME} {j+1}"
+            f"{observable_pattern_name} {j+1}"
             for j in range(len(observable_patterns))
         ]
 
-        if config.SPIDERPLOT_SCALING == 'minmax':
+        if spiderplot_scaling == 'minmax':
             scale = minmax
-        elif config.SPIDERPLOT_SCALING == 'none':
+        elif spiderplot_scaling == 'none':
             scale = lambda x: x
         else:
-            warnings.warn(f'Unknown SPIDERPLOT_SCALING {config.SPIDERPLOT_SCALING}. No scaling will be used.')
+            warnings.warn(f'Unknown SPIDERPLOT_SCALING "{spiderplot_scaling}". Available scaling options are "minmax" and "none". No scaling will be used.')
             scale = lambda x: x
  
         scaled_observable_patterns = scale(observable_patterns)
@@ -112,7 +125,7 @@ class ResultVisualizer:
         for j in range(len(scaled_observable_patterns)):
             row = j // max_fingerprints_per_col + 1
             col = j % num_cols + 1
-            adj_scale = np.sum(np.array(observable_patterns[j])) if config.ADJ_SCALE else 1
+            adj_scale = np.sum(np.array(observable_patterns[j])) if scale_adjustment else 1
             current_pattern: np.array = np.array(scaled_observable_patterns[j]) / adj_scale
             fig.add_scatterpolar(r=current_pattern, theta=observable_labels, fill="toself", row=row, col=col)
 
@@ -120,19 +133,22 @@ class ResultVisualizer:
             showlegend=False,
             plot_bgcolor="rgba(0, 0, 0, 0)",
             paper_bgcolor="rgba(0, 0, 0, 0)",
-            title=config.OBSERVABLE_PATTERN_NAME_PLURAL,
+            title=observable_pattern_name_plural,
         )
 
         fig.update_polars(dict(radialaxis=dict(visible=True, range=plot_range, showticklabels=False)))
         fig.update_layout(height=500*num_rows, width=1000)
 
-        output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+        if use_config:
+            output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
 
-        fig.write_image(
-            f"{output_path}{config.DATASET_NAME}-{config.OBSERVABLE_PATTERN_NAME_PLURAL}-{config.NUMBER_OBSERVABLE_PATTERNS}.pdf",
-        )
+            fig.write_image(
+                f"{output_path}{config.DATASET_NAME}-{config.OBSERVABLE_PATTERN_NAME_PLURAL}-{config.NUMBER_OBSERVABLE_PATTERNS}.pdf",
+            )
+        else:
+            return fig
 
     @staticmethod
     def plot_result_radar_chart(
