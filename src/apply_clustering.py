@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from gapstatistics.gapstatistics import GapStatistics
 from sklearn.cluster import AgglomerativeClustering
-from clustering import OptimalK_Wrapper, agglomerative_clustering_function
+from clustering import OptimalK_Wrapper, agglomerative_clustering_function, make_agglomerative_clustering_function
 import matplotlib.pyplot as plt
 import scipy.cluster.hierarchy as sch
 from scipy.cluster.hierarchy import dendrogram, linkage
@@ -65,7 +65,8 @@ class ClusteringApplier:
     @staticmethod
     def draw_gap_statistic_plot(
         use_config:bool=True, df_observable:pd.DataFrame=None,
-        gap_statistic_cluster_range:int=10, observed_features=List[str]
+        gap_statistic_cluster_range:int=10, observed_features=List[str],
+        linkage='ward'
         ) -> int:
 
         if use_config:
@@ -74,7 +75,10 @@ class ClusteringApplier:
         else:
             df = df_observable.loc[:, observed_features]
 
-        optimal_K = OptimalK_Wrapper(clusterer=agglomerative_clustering_function)
+        my_agglomerative_clustering_function = make_agglomerative_clustering_function(linkage=linkage)
+        optimal_K = OptimalK_Wrapper(clusterer=my_agglomerative_clustering_function, clusterer_kwargs={
+                     'linkage': linkage
+        })
 
         X = df.to_numpy()
         cluster_range = np.arange(2, gap_statistic_cluster_range)
@@ -83,9 +87,12 @@ class ClusteringApplier:
         # and will be accessed this way in the next step.
 
         kn = KneeLocator(optimal_K.gap_df.n_clusters, optimal_K.gap_df.gap_value, curve='concave', direction='increasing')
-        elblow_or_knee = kn.knee
+        elb = KneeLocator(optimal_K.gap_df.n_clusters, optimal_K.gap_df.gap_value, curve='convex', direction='decreasing')
+
+        knee = kn.knee
+        elbow = elb.elbow
         
-        fig = optimal_K.plot_gaps(AgglomerativeClustering, knee=elblow_or_knee, size = (30, 7))
+        fig = optimal_K.plot_gaps(AgglomerativeClustering, knee=knee, elbow=elbow, size = (30, 7))
 
         if use_config:
             ouput_folder: str = f"{config.OUTPUT_FOLDER_BASE}gapstat/"
@@ -96,7 +103,12 @@ class ClusteringApplier:
                 bbox_inches="tight",
             )
 
-        return min(n_clusters, elblow_or_knee)
+        return {
+            'n_clusters': n_clusters,
+            'knee': knee,
+            'elbow': elbow,
+            'clusterer': optimal_K
+        }
 
 
 
@@ -299,7 +311,8 @@ class ClusteringApplier:
         observable_pattern_name:str = 'Name',
         spiderplot_scaling:str = 'none',
         plot_title:str = 'Title',
-        scale_adjustment:bool = True
+        scale_adjustment:bool = True,
+        linkage:str= 'ward'
         ) -> dict:
         # load data
 
@@ -335,10 +348,10 @@ class ClusteringApplier:
         else:
             n_clusters = number_observable_patterns
         clusterer = AgglomerativeClustering(
-            n_clusters=n_clusters, linkage="ward", compute_distances=True
+            n_clusters=n_clusters, linkage=linkage, compute_distances=True,
         )
 
-        clusterer.fit_predict(clustering_data)
+        clusterer.fit_predict(clustering_data.copy())
         cluster_labels = clusterer.labels_
 
         df["pattern_type"] = cluster_labels
@@ -430,7 +443,9 @@ class ClusteringApplier:
                 'pw_dist': pw_dist,
                 'pw_norm_dist': pw_norm_dist,
                 'spider_plots': fig,
-                'fingerprint_distance_plots': dendrogram
+                'fingerprint_distance_plots': dendrogram,
+                'clusterer': clusterer,
+                'clustering_data': clustering_data
             }
 
         return output

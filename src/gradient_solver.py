@@ -54,7 +54,7 @@ def torch_correlation(u:torch.Tensor, v:torch.Tensor, w:torch.Tensor|None=None, 
         The weights for each value in `u` and `v`. Default is None,
         which gives each value a weight of 1.0
     centered : bool, optional
-        If True, `u` and `v` will be centered. Default is True.
+        If True, `u` and `v` will be centered. Default is False.
 
     Returns
     -------
@@ -113,14 +113,19 @@ def pearson_corrcoef(x:torch.Tensor, y:torch.Tensor) -> torch.Tensor:
 
     vx = x - torch.mean(x)
     vy = y - torch.mean(y)
-    return torch.sum(vx * vy) / (torch.sqrt(torch.sum(vx ** 2)) * torch.sqrt(torch.sum(vy ** 2)))
+    return torch.sum(vx * vy) / (torch.sqrt(torch.sum(vx ** 2)) * torch.sqrt(torch.sum(vy ** 2)) + 1e-20)
 
 @torch.jit.script
-def relative_entropy(p, q):
+def relative_entropy(p:torch.Tensor, q:torch.Tensor) -> torch.Tensor:
     return torch.special.entr(q) - torch.special.entr(p)
 
 @torch.jit.script
-def torch_jensenshannon(p:torch.Tensor, q:torch.Tensor):
+def torch_relative_entropy(x:torch.Tensor, y:torch.Tensor) -> torch.Tensor:
+    return (x * torch.log(x/y))
+
+
+@torch.jit.script
+def torch_jensenshannon(p:torch.Tensor, q:torch.Tensor) -> torch.Tensor:
 
     ########################################################################################
     ### Conversion of the jensenshannon distance from scipy.spatial.distance to pytorch. ###
@@ -212,6 +217,142 @@ def torch_jensenshannon(p:torch.Tensor, q:torch.Tensor):
     return torch.sqrt(js / 2.0)
 
 @torch.jit.script
+def _torch_matrix_jensenshannon(A:torch.Tensor) -> torch.Tensor:
+
+    ########################################################################################
+    ### Conversion of the jensenshannon distance from scipy.spatial.distance to pytorch. ###
+    ########################################################################################
+
+    """
+    Compute the pairwise Jensen-Shannon distance (metric) between
+    all entries in a matrix. This is the square root
+    of the Jensen-Shannon divergence.
+
+    The Jensen-Shannon distance between two probability
+    vectors `p` and `q` is defined as,
+
+    .. math::
+
+       \\sqrt{\\frac{D(p \\parallel m) + D(q \\parallel m)}{2}}
+
+    where :math:`m` is the pointwise mean of :math:`p` and :math:`q`
+    and :math:`D` is the Kullback-Leibler divergence.
+
+    This routine will normalize `p` and `q` if they don't sum to 1.0.
+
+    Parameters
+    ----------
+    A : (N,M) array_like
+        matrix of probability vectors
+    
+    Returns
+    -------
+    js : double or ndarray
+        The Jensen-Shannon distances along the `axis`.
+
+    """
+
+    normalized_A = A / torch.sum(A, dim=1).unsqueeze(-1)
+    m_A = (normalized_A.unsqueeze(-1) + normalized_A.T).permute(2,0,1) / 2.0
+    relative_entropies = relative_entropy(normalized_A, m_A)
+    js = (relative_entropies.sum(dim = 2) + relative_entropies.sum(dim = 2).T)
+    return torch.sqrt(js / 2.0)
+
+@torch.jit.script
+def torch_matrix_jensenshannon(A:torch.Tensor) -> torch.Tensor:
+
+    ########################################################################################
+    ### Conversion of the jensenshannon distance from scipy.spatial.distance to pytorch. ###
+    ########################################################################################
+
+    """
+    Compute the pairwise Jensen-Shannon distance (metric) between
+    all entries in a matrix. This is the square root
+    of the Jensen-Shannon divergence.
+
+    The Jensen-Shannon distance between two probability
+    vectors `p` and `q` is defined as,
+
+    .. math::
+
+       \\sqrt{\\frac{D(p \\parallel m) + D(q \\parallel m)}{2}}
+
+    where :math:`m` is the pointwise mean of :math:`p` and :math:`q`
+    and :math:`D` is the Kullback-Leibler divergence.
+
+    This routine will normalize `p` and `q` if they don't sum to 1.0.
+
+    Parameters
+    ----------
+    A : (N,M) array_like
+        matrix of probability vectors
+    
+    Returns
+    -------
+    js : double or ndarray
+        The Jensen-Shannon distances along the `axis`.
+
+    """
+
+    normalized_A = A / torch.sum(A, dim=1).unsqueeze(-1)
+    m_A = (normalized_A.unsqueeze(-1) + normalized_A.T).permute(2,0,1) / 2.0
+    relative_entropies = torch_relative_entropy(normalized_A, m_A) + 1e-10
+    js = (relative_entropies.sum(dim = 2) + relative_entropies.sum(dim = 2).T).clamp(min = 0.)
+    return (js / 2.0).sqrt()
+
+@torch.jit.script
+def torch_matrix_correlation(A:torch.Tensor, w:torch.Tensor) -> torch.Tensor:
+
+    ######################################################################################
+    ### Conversion of the correlation distance from scipy.spatial.distance to pytorch. ###
+    ######################################################################################
+
+    """
+    Compute the pairwise correlation distance between elements in a 2-D matrix.
+
+    The correlation distance between two `u` and `v` in `A`, is
+    defined as
+
+    .. math::
+
+        1 - \\frac{(u - \\bar{u}) \\cdot (v - \\bar{v})}
+                  {{\\|(u - \\bar{u})\\|}_2 {\\|(v - \\bar{v})\\|}_2}
+
+    where :math:`\\bar{u}` is the mean of the elements of `u`
+    and :math:`x \\cdot y` is the dot product of :math:`x` and :math:`y`.
+
+    Parameters
+    ----------
+    A : (N,M) array_like
+        Input array.
+    w : (N,) array_like, optional
+        The weights for each value in `u` and `v`. Default is None,
+        which gives each value a weight of 1.0
+    centered : bool, optional
+        If True, `u` and `v` will be centered. Default is False.
+
+    Returns
+    -------
+    correlation : double
+        The correlation distances in 2-D array `A`.
+    """
+
+    w = w
+    w = w / w.sum()
+
+    wA = w * A
+    AwA = torch.mm(A, wA.T)
+    diag = AwA.diag()
+    dist = 1.0 - AwA / torch.sqrt(diag.reshape(-1, 1) * diag.reshape(1, -1))
+    # Clip the result to avoid rounding error
+    return torch.clip(dist, 0.0, 2.0)
+
+@torch.jit.script
+def construct_distance_matrix(A:torch.Tensor, feature_weights:torch.Tensor) -> torch.Tensor:
+    distance_matrix =  torch_matrix_correlation(A, w = feature_weights)
+    return distance_matrix / distance_matrix.sum()
+
+@torch.jit.script
 def _construct_distance_matrix(A:torch.Tensor, feature_weights:torch.Tensor, range:torch.Tensor) -> torch.Tensor:
     distance_matrix =  torch.stack([
         torch.stack([
@@ -221,7 +362,7 @@ def _construct_distance_matrix(A:torch.Tensor, feature_weights:torch.Tensor, ran
     return distance_matrix / distance_matrix.sum()
 
 class FeatureSelectionModel(Paremeterized_Model):
-    def __init__(self, df_explainable:pd.DataFrame, df_observable_distances:pd.DataFrame, num_samples:int=1, device='cpu', dtype=torch.float64):
+    def __init__(self, df_explainable:pd.DataFrame, df_observable_distances:pd.DataFrame, num_samples:int=1, penalty=0., device='cpu', dtype=torch.float64):
         super().__init__(device, dtype)
 
         self.tensor_explainable = torch.tensor(df_explainable.to_numpy(), dtype=self.dtype, device=self.device)
@@ -231,7 +372,9 @@ class FeatureSelectionModel(Paremeterized_Model):
 
         self.N = self.tensor_explainable.shape[0]
         self.M = len(self.feature_names)
-        self._range = torch.arange(self.N)
+        self._range = torch.arange(self.N, device=self.device)
+
+        self.penalty = torch.tensor(penalty, device=self.device, dtype=self.dtype)
 
         self.num_samples = num_samples
         
@@ -247,10 +390,6 @@ class FeatureSelectionModel(Paremeterized_Model):
         self.add_param('alpha', torch.log(alpha_init), lambda x: x.exp())
         self.add_param('beta',  torch.log(beta_init), lambda x: x.exp())
 
-        self.Beta_prior = Beta(
-            alpha_prior * torch.ones(len(self.feature_names), dtype = self.dtype, device = self.device),
-            beta_prior  * torch.ones(len(self.feature_names), dtype = self.dtype, device = self.device))
-        
         self.best_loss = None 
         self.best_weights = None
         
@@ -286,7 +425,6 @@ class FeatureSelectionModel(Paremeterized_Model):
  
         # Sample feature_weights
         feature_weights = Beta(self.constrained('alpha'), self.constrained('beta')).rsample([self.num_samples]).mean(dim = 0)
-        #prior_weights = self.Beta_prior.mean #sample([self.num_samples]).mean
       
         # Construct the distance_matrix 
         distance_matrix = _construct_distance_matrix(A=self.tensor_explainable, feature_weights=feature_weights, range=self._range)
@@ -294,13 +432,10 @@ class FeatureSelectionModel(Paremeterized_Model):
         # Calculate the correlation between the distance matrix and the observable distances
         coef = pearson_corrcoef(distance_matrix, self.tensor_observable_distances)
 
-        # Distance to the Prior
-        #dist = torch_jensenshannon(feature_weights, prior_weights) / self.N
-        #eucl_dist = (feature_weights - prior_weights).pow(2).sum().sqrt()
-        #dist = eucl_dist / self.N
+        k_penalty = (feature_weights.sum() * self.penalty)
 
         # Loss
-        loss = -coef #+ dist
+        loss = -coef + k_penalty
 
         self.save_if_best_loss(loss, feature_weights)
 

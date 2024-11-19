@@ -97,7 +97,7 @@ class DataPreparator:
 
         if df is None:
             return None, None
-
+        
         df, scaling_information = DataPreparator.apply_row_scaling(df, feature_columns)
         df = DataPreparator.apply_imputation(
             df, feature_columns, use_config=use_config, nn_imputation_k=nn_imputation_k

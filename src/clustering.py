@@ -136,7 +136,7 @@ class OptimalK_Wrapper(OptimalK):
     
         return self.n_clusters
     
-    def plot_gaps(self, model, knee, size = (30, 10)):
+    def plot_gaps(self, model, knee, elbow, size = (30, 10)):
         """
         Plots the results of the last run optimal K search procedure.
         Four plots are printed:
@@ -183,8 +183,12 @@ class OptimalK_Wrapper(OptimalK):
             label = 'optimal-K'
         )
         plt.vlines(
-            knee, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="knee/elbow",
+            knee, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="knee",
             linewidth = 3, color = 'orange'
+        )
+        plt.vlines(
+            elbow, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="elbow",
+            linewidth = 3, color = 'teal'
         )
         plt.grid(True)
         plt.xlabel("Cluster Count")
@@ -253,3 +257,27 @@ def agglomerative_clustering_function(X, k, **kwargs):
     # Return the location of each cluster center,
     # and the labels for each point.
     return cluster_centers_, y
+
+def make_agglomerative_clustering_function(linkage='ward'):
+    def agglomerative_clustering_function(X, k, **kwargs):
+        """ 
+        These user defined functions *must* take the X and a k 
+        and can take an arbitrary number of other kwargs, which can
+        be pass with `clusterer_kwargs` when initializing OptimalK
+        """
+        
+        # Here you can do whatever clustering algorithm you heart desires,
+        # but we'll do a simple wrap of the MeanShift model in sklearn.
+        
+        model = AgglomerativeClustering(n_clusters=k, linkage='ward', compute_distances=False)
+        y = model.fit_predict(X)
+        nearest_centroid = NearestCentroid()
+        nearest_centroid.fit(X, y)
+
+        cluster_centers_ = nearest_centroid.centroids_
+        
+        # Return the location of each cluster center,
+        # and the labels for each point.
+        return cluster_centers_, y
+    return agglomerative_clustering_function
+
