@@ -301,7 +301,7 @@ def torch_matrix_jensenshannon(A:torch.Tensor) -> torch.Tensor:
     return (js / 2.0).sqrt()
 
 @torch.jit.script
-def torch_matrix_correlation(A:torch.Tensor, w:torch.Tensor) -> torch.Tensor:
+def torch_matrix_correlation(A:torch.Tensor, w:torch.Tensor, normalize:bool=True) -> torch.Tensor:
 
     ######################################################################################
     ### Conversion of the correlation distance from scipy.spatial.distance to pytorch. ###
@@ -336,9 +336,9 @@ def torch_matrix_correlation(A:torch.Tensor, w:torch.Tensor) -> torch.Tensor:
     correlation : double
         The correlation distances in 2-D array `A`.
     """
-
-    w = w
-    w = w / w.sum()
+    
+    if normalize:
+        w = w / w.sum()
 
     wA = w * A
     AwA = torch.mm(A, wA.T)
@@ -348,8 +348,8 @@ def torch_matrix_correlation(A:torch.Tensor, w:torch.Tensor) -> torch.Tensor:
     return torch.clip(dist, 0.0, 2.0)
 
 @torch.jit.script
-def construct_distance_matrix(A:torch.Tensor, feature_weights:torch.Tensor) -> torch.Tensor:
-    distance_matrix =  torch_matrix_correlation(A, w = feature_weights)
+def construct_distance_matrix(A:torch.Tensor, feature_weights:torch.Tensor, normalize:bool=True) -> torch.Tensor:
+    distance_matrix =  torch_matrix_correlation(A, w = feature_weights, normalize=normalize)
     return distance_matrix / distance_matrix.sum()
 
 @torch.jit.script

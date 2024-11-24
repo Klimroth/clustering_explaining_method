@@ -83,7 +83,7 @@ DISTANCE_MEASURE_EXPLAINABLE_FEATURES = "correlation"
 INFERENCE_MODE_EXPLAINING_FEATURES = "exact"
 
 # maximum parallel threads
-MAX_NUM_THREADS = 6
+MAX_NUM_THREADS = 12
 
 # The spiderplots will be scaled before plotting
 # One of 'minmax', 'none'
@@ -92,3 +92,8 @@ SPIDERPLOT_SCALING = 'none'
 # If True, the fingerprints in the spiderplots will be rescaled
 # So that the sum of all vectors will be 1.
 ADJ_SCALE = False
+
+# A value greater or equal 0 but smaller than 1.
+# This parameter applies a penalty for using more explaining parameters.
+# 0 means no penalty, whereas a higher number implies a higher penalty.
+SPARSITY = 0.05
