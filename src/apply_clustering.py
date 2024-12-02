@@ -262,7 +262,7 @@ class ClusteringApplier:
         )
     
     @staticmethod
-    def calculate_pairwise_distances(
+    def rowwise_calculate_pairwise_distances(
             df: pd.DataFrame, feature_names: List[str], distance: str,
         ) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
@@ -289,6 +289,124 @@ class ClusteringApplier:
                 else:
                     dist = 1.0 * euclidean(fingerprint_1, fingerprint_2)
                 distance_matrix[grp_i, grp_j] = dist
+
+        normalised_distance_matrix = distance_matrix / np.sum(distance_matrix)
+
+        return pd.DataFrame(
+            distance_matrix, columns=df.index, index=df.index
+        ), pd.DataFrame(
+            normalised_distance_matrix, columns=df.index, index=df.index, 
+        )
+    
+    @staticmethod
+    def numpy_matrix_correlation(A:np.array) -> np.array:
+
+        """
+        Compute the pairwise correlation distance between elements in a 2-D matrix.
+
+        The correlation distance between two `u` and `v` in `A`, is
+        defined as
+
+        .. math::
+
+            1 - \\frac{(u - \\bar{u}) \\cdot (v - \\bar{v})}
+                    {{\\|(u - \\bar{u})\\|}_2 {\\|(v - \\bar{v})\\|}_2}
+
+        where :math:`\\bar{u}` is the mean of the elements of `u`
+        and :math:`x \\cdot y` is the dot product of :math:`x` and :math:`y`.
+
+        Parameters
+        ----------
+        A : (N,M) array_like
+            Input array.
+        w : (N,) array_like, optional
+            The weights for each value in `u` and `v`. Default is None,
+            which gives each value a weight of 1.0
+        centered : bool, optional
+            If True, `u` and `v` will be centered. Default is False.
+
+        Returns
+        -------
+        correlation : double
+            The correlation distances in 2-D array `A`.
+        """
+        
+        AA = np.matmul(A, A.T)
+        diag = np.diag(AA)
+        dist = 1.0 - AA / np.sqrt(diag.reshape(-1, 1) * diag.reshape(1, -1))
+        # Clip the result to avoid rounding error
+        return np.clip(dist, 0.0, 2.0)
+
+    @staticmethod
+    def numpy_relative_entropy(x:np.array, y:np.array) -> np.array:
+        return (x * np.log(x/y))
+
+    @staticmethod
+    def numpy_matrix_jensenshannon(A:np.array, epsilon:float=1e-20) -> np.array:
+
+        ########################################################################################
+        ### Conversion of the jensenshannon distance from scipy.spatial.distance to pytorch. ###
+        ########################################################################################
+
+        """
+        Compute the pairwise Jensen-Shannon distance (metric) between
+        all entries in a matrix. This is the square root
+        of the Jensen-Shannon divergence.
+
+        The Jensen-Shannon distance between two probability
+        vectors `p` and `q` is defined as,
+
+        .. math::
+
+        \\sqrt{\\frac{D(p \\parallel m) + D(q \\parallel m)}{2}}
+
+        where :math:`m` is the pointwise mean of :math:`p` and :math:`q`
+        and :math:`D` is the Kullback-Leibler divergence.
+
+        This routine will normalize `p` and `q` if they don't sum to 1.0.
+
+        Parameters
+        ----------
+        A : (N,M) array_like
+            matrix of probability vectors
+        
+        Returns
+        -------
+        js : double or ndarray
+            The Jensen-Shannon distances along the `axis`.
+
+        """
+        
+        clamped_A = A.clip(min = epsilon)
+        normalized_A = clamped_A / np.expand_dims(np.sum(clamped_A, axis=1), -1)
+        m_A = np.permute_dims(np.expand_dims(normalized_A, -1) + normalized_A.T, (2,0,1)) / 2.0
+        relative_entropies = ClusteringApplier.numpy_relative_entropy(normalized_A, m_A) + epsilon
+        js = (relative_entropies.sum(axis = 2) + relative_entropies.sum(axis = 2).T).clip(min = epsilon)
+        return np.sqrt(js / 2.0)
+
+    @staticmethod
+    def calculate_pairwise_distances(
+            df: pd.DataFrame, feature_names: List[str], distance: str,
+        ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+        if distance not in [
+            "jensenshannon",
+            "correlation",
+        ]:
+            raise Exception(
+                "Invalid distance measure used to measure similarity."
+            )
+        
+        fingerprint_df = df.loc[:, feature_names]
+        fingerprint_array = fingerprint_df.to_numpy()
+
+        if distance == "jensenshannon":
+            distance_matrix = ClusteringApplier.numpy_matrix_jensenshannon(fingerprint_array)
+        elif distance == "correlation":
+            distance_matrix = ClusteringApplier.numpy_matrix_correlation(fingerprint_array)
+        else:
+            raise Exception(f'Not Implemented: {distance}')
+
 
         normalised_distance_matrix = distance_matrix / np.sum(distance_matrix)
 
@@ -461,12 +579,19 @@ class ClusteringApplier:
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
             df_explainable, features, distance_measure,
         )
+        
+        # For debugging
+        if False:
+            _, rdf_explainable_distances = ClusteringApplier.rowwise_calculate_pairwise_distances(
+                df_explainable, features, distance_measure,
+            )
+            assert np.isclose(df_explainable_distances.to_numpy(),rdf_explainable_distances.to_numpy()).all().all()
 
         x = df_explainable_distances.to_numpy().flatten()
         y = df_observable_distances.to_numpy().flatten()
 
         k = len(features)
-        r = float(np.corrcoef(x, y)[0, 1])
+        r = abs(float(np.corrcoef(x, y)[0, 1]))
         r_tilde = r - penalty_size*k
         
         return r_tilde
@@ -490,7 +615,7 @@ class ClusteringApplier:
             distance_measure = config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
 
         powerset_features = chain.from_iterable(
-            combinations(features, r) for r in range(2, len(features) + 1)
+            combinations(features, r) for r in range(1, len(features) + 1)
         )
         powerset_method_input = [
             [
@@ -560,7 +685,8 @@ class ClusteringApplier:
         distance_measure:str = 'correlation',
         max_num_threads:int=6,
         sparsity_parameter:float=0.,
-        group_name:str='Index'
+        group_name:str='Index',
+        debug:bool=False
     ) -> dict:
         if use_config:
             df_explainable: pd.DataFrame = ClusteringApplier.read_explaining_features()
@@ -633,6 +759,12 @@ class ClusteringApplier:
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
             df_explainable, features, distance_measure
         )
+
+        if debug:
+            _, rdf_explainable_distances = ClusteringApplier.rowwise_calculate_pairwise_distances(
+                df_explainable, features, distance_measure
+            )
+            assert np.isclose(df_explainable_distances.to_numpy(), rdf_explainable_distances.to_numpy()).all().all(), 'Debug Failed'
 
         dendrogram = ClusteringApplier._plot_dendrogram_by_distance_matrix(
             mat=df_explainable_distances.to_numpy(),

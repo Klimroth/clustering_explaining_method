@@ -217,7 +217,7 @@ def torch_jensenshannon(p:torch.Tensor, q:torch.Tensor) -> torch.Tensor:
     return torch.sqrt(js / 2.0)
 
 @torch.jit.script
-def _torch_matrix_jensenshannon(A:torch.Tensor) -> torch.Tensor:
+def torch_matrix_jensenshannon(A:torch.Tensor, epsilon:float=1e-20) -> torch.Tensor:
 
     ########################################################################################
     ### Conversion of the jensenshannon distance from scipy.spatial.distance to pytorch. ###
@@ -251,57 +251,16 @@ def _torch_matrix_jensenshannon(A:torch.Tensor) -> torch.Tensor:
         The Jensen-Shannon distances along the `axis`.
 
     """
-
-    normalized_A = A / torch.sum(A, dim=1).unsqueeze(-1)
-    m_A = (normalized_A.unsqueeze(-1) + normalized_A.T).permute(2,0,1) / 2.0
-    relative_entropies = relative_entropy(normalized_A, m_A)
-    js = (relative_entropies.sum(dim = 2) + relative_entropies.sum(dim = 2).T)
-    return torch.sqrt(js / 2.0)
-
-@torch.jit.script
-def torch_matrix_jensenshannon(A:torch.Tensor) -> torch.Tensor:
-
-    ########################################################################################
-    ### Conversion of the jensenshannon distance from scipy.spatial.distance to pytorch. ###
-    ########################################################################################
-
-    """
-    Compute the pairwise Jensen-Shannon distance (metric) between
-    all entries in a matrix. This is the square root
-    of the Jensen-Shannon divergence.
-
-    The Jensen-Shannon distance between two probability
-    vectors `p` and `q` is defined as,
-
-    .. math::
-
-       \\sqrt{\\frac{D(p \\parallel m) + D(q \\parallel m)}{2}}
-
-    where :math:`m` is the pointwise mean of :math:`p` and :math:`q`
-    and :math:`D` is the Kullback-Leibler divergence.
-
-    This routine will normalize `p` and `q` if they don't sum to 1.0.
-
-    Parameters
-    ----------
-    A : (N,M) array_like
-        matrix of probability vectors
     
-    Returns
-    -------
-    js : double or ndarray
-        The Jensen-Shannon distances along the `axis`.
-
-    """
-
-    normalized_A = A / torch.sum(A, dim=1).unsqueeze(-1)
+    clamped_A = A.clamp(min = epsilon)
+    normalized_A = clamped_A / torch.sum(clamped_A, dim=1).unsqueeze(-1)
     m_A = (normalized_A.unsqueeze(-1) + normalized_A.T).permute(2,0,1) / 2.0
-    relative_entropies = torch_relative_entropy(normalized_A, m_A) + 1e-10
+    relative_entropies = torch_relative_entropy(normalized_A, m_A) + epsilon
     js = (relative_entropies.sum(dim = 2) + relative_entropies.sum(dim = 2).T).clamp(min = 0.)
     return (js / 2.0).sqrt()
 
 @torch.jit.script
-def torch_matrix_correlation(A:torch.Tensor, w:torch.Tensor, normalize:bool=True) -> torch.Tensor:
+def torch_matrix_correlation(A:torch.Tensor, w:torch.Tensor, normalize:bool=False) -> torch.Tensor:
 
     ######################################################################################
     ### Conversion of the correlation distance from scipy.spatial.distance to pytorch. ###
@@ -348,7 +307,7 @@ def torch_matrix_correlation(A:torch.Tensor, w:torch.Tensor, normalize:bool=True
     return torch.clip(dist, 0.0, 2.0)
 
 @torch.jit.script
-def construct_distance_matrix(A:torch.Tensor, feature_weights:torch.Tensor, normalize:bool=True) -> torch.Tensor:
+def construct_distance_matrix(A:torch.Tensor, feature_weights:torch.Tensor, normalize:bool=False) -> torch.Tensor:
     distance_matrix =  torch_matrix_correlation(A, w = feature_weights, normalize=normalize)
     return distance_matrix / distance_matrix.sum()
 
