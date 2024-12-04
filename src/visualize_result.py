@@ -119,6 +119,7 @@ class ResultVisualizer:
         fig = make_subplots(
             rows=num_rows, cols=num_cols, specs=[[{'type': 'polar'}]*num_cols]*num_rows,
             horizontal_spacing=0.3, vertical_spacing=0.05,
+            # !!!
             subplot_titles=[f'Fingerprint {j+1} (homogeneity: {calculate_homogeneity(observable_patterns)[j]:.2f})' for j in range(len(scaled_observable_patterns))]
         )
 
