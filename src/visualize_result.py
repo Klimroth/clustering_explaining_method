@@ -9,6 +9,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 
+import seaborn as sns
+
 import config
 import warnings
 
@@ -27,86 +29,24 @@ if kaleido.__version__ != '0.1.0.post1':
 class ResultVisualizer:
 
     @staticmethod
-    def visualize_results():
-        pass
-        '''
-        df_explainable: pd.DataFrame = ClusteringApplier.read_explaining_features()
-
-        df_optimal_explainable: pd.DataFrame = pd.read_excel(
-            f"{config.OUTPUT_FOLDER_BASE}explaining_features/{config.DATASET_NAME}-optimal_explainable_features-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
-        )
-        explainable_features: List[str] = []
-        for feature in config.EXPLAINING_FEATURE_NAMES.keys():
-            if df_optimal_explainable.loc[0, feature] == 1:
-                explainable_features.append(feature)
-
-        df_observable_distances: pd.DataFrame = pd.read_excel(
-            f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-distance-normalized-matrix-{config.DISTANCE_MEASURE_FINGERPRINT}-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
-        )
-        _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
-            df_explainable, explainable_features, config.DISTANCE_MEASURE_EXPLAINABLE_FEATURES
-        )
-
-        ResultVisualizer.make_regression_plot(
-            df_explainable_distances, df_observable_distances
-        )
-
-        df_fingerprint: pd.DataFrame = pd.read_excel(
-            f"{config.OUTPUT_FOLDER_BASE}observables/{config.DATASET_NAME}-fingerprint-observables-{config.NUMBER_OBSERVABLE_PATTERNS}.xlsx"
-        )
-        column_headings: List[int] = [
-            j + 1 for j in range(config.NUMBER_OBSERVABLE_PATTERNS)
-        ]
-
-        categories_fingerprints: List[str] = [
-            f"{config.OBSERVABLE_PATTERN_NAME} {j}" for j in column_headings
-        ]
-        group_names: List[str] = sorted(df_fingerprint[config.GROUP_NAME].to_list())
-        for group_name in group_names:
-            ResultVisualizer.plot_result_radar_chart(
-                simplex_coordinates_fingerprint=df_fingerprint[
-                    df_fingerprint[config.GROUP_NAME] == group_name
-                ][column_headings].to_list(),
-                categories_fingerprint=categories_fingerprints,
-                simplex_coordinates_explainable=df_explainable[
-                    df_explainable[config.GROUP_NAME] == group_name
-                ][explainable_features].to_list(),
-                categories_explainable=explainable_features,
-                title=group_name,
-            )'''
-
-    @staticmethod
     def plot_simple_radar_chart(
         observable_patterns: List[List[float]], observable_labels: List[str],
         max_fingerprints_per_col: int = 2,
         use_config:bool = True,
         observable_pattern_name:str = 'Name',
-        spiderplot_scaling:str = 'none',
         observable_pattern_name_plural:str = 'Names',
-        scale_adjustment:bool = True
     ):
         
         if use_config:
             observable_pattern_name = config.OBSERVABLE_PATTERN_NAME
-            spiderplot_scaling = config.SPIDERPLOT_SCALING
-            observable_pattern_name_plural = config.OBSERVABLE_PATTERN_NAME_PLURAL
-            scale_adjustment = config.ADJ_SCALE
-        
+            observable_pattern_name_plural = config.OBSERVABLE_PATTERN_NAME_PLURAL        
 
         subplot_titles: List[str] = [
             f"{observable_pattern_name} {j+1}"
             for j in range(len(observable_patterns))
         ]
-
-        if spiderplot_scaling == 'minmax':
-            scale = minmax
-        elif spiderplot_scaling == 'none':
-            scale = lambda x: x
-        else:
-            warnings.warn(f'Unknown SPIDERPLOT_SCALING "{spiderplot_scaling}". Available scaling options are "minmax" and "none". No scaling will be used.')
-            scale = lambda x: x
  
-        scaled_observable_patterns = scale(observable_patterns)
+        scaled_observable_patterns = observable_patterns
 
         if np.min(scaled_observable_patterns) < 0:
             plot_range = [-1, 1]
@@ -119,15 +59,13 @@ class ResultVisualizer:
         fig = make_subplots(
             rows=num_rows, cols=num_cols, specs=[[{'type': 'polar'}]*num_cols]*num_rows,
             horizontal_spacing=0.3, vertical_spacing=0.05,
-            # !!!
-            subplot_titles=[f'Fingerprint {j+1} (homogeneity: {calculate_homogeneity(observable_patterns)[j]:.2f})' for j in range(len(scaled_observable_patterns))]
+            subplot_titles=subplot_titles #[f'Cluster {j+1}' for j in range(len(scaled_observable_patterns))]
         )
 
         for j in range(len(scaled_observable_patterns)):
             row = j // max_fingerprints_per_col + 1
             col = j % num_cols + 1
-            adj_scale = np.sum(np.array(observable_patterns[j])) if scale_adjustment else 1
-            current_pattern: np.array = np.array(scaled_observable_patterns[j]) / adj_scale
+            current_pattern: np.array = np.array(scaled_observable_patterns[j])
             fig.add_scatterpolar(r=current_pattern, theta=observable_labels, fill="toself", row=row, col=col)
 
         fig.update_layout(
@@ -153,78 +91,110 @@ class ResultVisualizer:
 
     @staticmethod
     def plot_result_radar_chart(
-        simplex_coordinates_fingerprint: List[float],
+        simplex_coordinates_fingerprint: pd.DataFrame,
         categories_fingerprint: List[str],
-        simplex_coordinates_explainable: List[float],
+        simplex_coordinates_explainable: pd.DataFrame,
         categories_explainable: List[str],
         title: str,
+        use_config: bool = False
     ):
 
-        # normalize to length one
-        simplex_coordinates_fingerprint = np.array(
-            simplex_coordinates_fingerprint
-        ) / np.sum(np.array(simplex_coordinates_fingerprint))
-        simplex_coordinates_explainable = np.array(
-            simplex_coordinates_explainable
-        ) / np.sum(np.array(simplex_coordinates_explainable))
+        assert simplex_coordinates_fingerprint.shape[0] == simplex_coordinates_explainable.shape[0], \
+        'Error: Expected the same number of rows in simplex_coordinates_fingerprint and simplex_coordinates_explainable'   
+
+        num_rows=simplex_coordinates_fingerprint.shape[0]
+        num_cols=2
+        plot_range = [0,1]
+
+        row_titles = list(simplex_coordinates_explainable.index)
 
         fig = make_subplots(
-            rows=1,
-            cols=2,
-            subplot_titles=["observable patterns", "explainable features"],
-        )
+                rows=num_rows,
+                cols=num_cols,
+                specs=[[{'type': 'polar', 'l':0.1}]*(num_cols)]*num_rows,
+                horizontal_spacing=0.3, vertical_spacing=(0.05 / (num_rows - 1)),
+                column_titles=["observable patterns", "explainable features"],
+            )
+        
+        for i in range(num_rows):
 
-        fig.add_trace(
-            go.Scatterpolar(
-                r=simplex_coordinates_fingerprint,
+            fig.add_scatterpolar(
+                r=simplex_coordinates_fingerprint.iloc[i],
                 theta=categories_fingerprint,
                 fill="toself",
-            ),
-            row=1,
-            col=1,
-        )
+                row=i+1,
+                col=1,    
+            )
 
-        fig.add_trace(
-            go.Scatterpolar(
-                r=simplex_coordinates_explainable,
+            fig.add_annotation(
+                dict(
+                x= 0.5,
+                y = 1 - ((i+0.9) / num_rows),
+                text=row_titles[i],
+                showarrow=False,
+                xref="paper",
+                yref="paper",
+                font=dict(size=14, color="black"),
+                align="center"
+            ))
+
+            fig.add_scatterpolar(
+                r=simplex_coordinates_explainable.iloc[i],
                 theta=categories_explainable,
                 fill="toself",
-            ),
-            row=1,
-            col=2,
-        )
+                row=i+1,
+                col=2,
+            )
 
         fig.update_layout(
             polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
             showlegend=False,
             plot_bgcolor="rgba(0, 0, 0, 0)",
             paper_bgcolor="rgba(0, 0, 0, 0)",
-            title=title,
+            title=dict(
+                text=title,
+                automargin=True,
+                xref='paper'
+            ),
+            margin=dict(
+                t=50,  # Top margin
+                b=50,  # Bottom margin
+                l=50,  # Left margin
+                r=50   # Right margin
+            ),
+            height=300*num_rows,
+            width=600
         )
 
-        fig.update_layout(
-            {
-                "plot_bgcolor": "rgba(0, 0, 0, 0)",
-                "paper_bgcolor": "rgba(0, 0, 0, 0)",
-            }
+        fig.update_polars(
+            dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=plot_range,
+                    showticklabels=False)
+                )
         )
 
-        output_path = f"{config.OUTPUT_FOLDER_BASE}result_visualization/"
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+        if use_config:        
+            output_path = f"{config.OUTPUT_FOLDER_BASE}result_visualization/"
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
 
-        fig.write_image(
-            f"{output_path}{config.DATASET_NAME}-{title}-radar_plot-{config.NUMBER_OBSERVABLE_PATTERNS}.png",
-            dpi=300,
-        )
+            fig.write_image(
+                f"{output_path}{config.DATASET_NAME}-{title}-radar_plot-{config.NUMBER_OBSERVABLE_PATTERNS}.pdf",
+            )
+        else:
+            return fig
 
     @staticmethod
     def make_regression_plot(
-        distance_explainable: pd.DataFrame, distance_observable: pd.DataFrame
+        distance_explainable: pd.DataFrame,
+        distance_observable: pd.DataFrame,
+        use_config: bool = False
     ):
 
         if set(distance_explainable.index.to_list()) != set(
-            distance_observable.index.to_list
+            distance_observable.index.to_list()
         ):
             print(
                 "ERROR: Explainables and observables have a different index. Cannot make distance regression."
@@ -256,19 +226,59 @@ class ResultVisualizer:
             x="distance explainable features",
             y="distance observable features",
             trendline="ols",
+            trendline_color_override='orange',
         )
         fig.update_layout(
             plot_bgcolor="rgba(0, 0, 0, 0)",
             paper_bgcolor="rgba(0, 0, 0, 0)",
+            width = 800,
+            height = 800,
         )
+
+        if use_config:
+            output_path = f"{config.OUTPUT_FOLDER_BASE}result_visualization/"
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+
+            fig.write_image(
+                f"{output_path}{config.DATASET_NAME}-regression_plot-{config.NUMBER_OBSERVABLE_PATTERNS}.pdf",
+            )
+        else:
+            return fig
+
+    @staticmethod
+    def plot_higher_order_feature_importances(
+        human_readable_dict:dict
+    ):
+
+        fig = plt.figure(figsize=(20, 10))
+        ax = sns.barplot(human_readable_dict)
+        ax.axes.xaxis.set_tick_params(rotation=90)
 
         output_path = f"{config.OUTPUT_FOLDER_BASE}result_visualization/"
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
-        fig.write_image(
-            f"{output_path}{config.DATASET_NAME}-regression_plot-{config.NUMBER_OBSERVABLE_PATTERNS}.png",
-            dpi=300,
+        plt.tight_layout()
+
+        fig.savefig(
+            f"{output_path}{config.DATASET_NAME}-higher_order_feature_importances-{config.NUMBER_OBSERVABLE_PATTERNS}.pdf",
+        )
+
+    @staticmethod
+    def plot_homogeneity(hom_df:pd.DataFrame):
+        fig = plt.figure(figsize=(10, 5))
+        ax = sns.barplot(hom_df)
+        ax.axes.set_ylabel('Homogeneity')
+        ax.axes.xaxis.set_tick_params(rotation=90)
+        output_path = f"{config.OUTPUT_FOLDER_BASE}result_visualization/"
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        plt.tight_layout()
+
+        fig.savefig(
+            f"{output_path}{config.DATASET_NAME}-homogeneity-{config.NUMBER_OBSERVABLE_PATTERNS}.pdf",
         )
 
 

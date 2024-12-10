@@ -82,18 +82,19 @@ DISTANCE_MEASURE_EXPLAINABLE_FEATURES = "correlation"
 # mode of infering the optimal set of explaining features exact/heuristic
 INFERENCE_MODE_EXPLAINING_FEATURES = "exact"
 
+# if mode 'heurisitc' is chosen, the algorithm will compute the exact values
+# for feature combinations up do a combinatory depth of N; from there, it will
+# perform a greedy search.
+HEURISTIC_N = 2
+
 # maximum parallel threads
 MAX_NUM_THREADS = 12
-
-# The spiderplots will be scaled before plotting
-# One of 'minmax', 'none'
-SPIDERPLOT_SCALING = 'none'
-
-# If True, the fingerprints in the spiderplots will be rescaled
-# So that the sum of all vectors will be 1.
-ADJ_SCALE = False
 
 # A value greater or equal 0 but smaller than 1.
 # This parameter applies a penalty for using more explaining parameters.
 # 0 means no penalty, whereas a higher number implies a higher penalty.
-SPARSITY = 0.05
+SPARSITY = 0.007
+
+# Higher-order permutation-based feature importance K.
+# See Definition 4 in the paper.
+HIGHER_ORDER_IMPORTANCE_K = 100

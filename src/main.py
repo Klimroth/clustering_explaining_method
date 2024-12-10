@@ -6,6 +6,7 @@ CONDUCT_DATA_PREPARATION = True
 CONDUCT_GAP_STAT_ANALYSIS = True
 CONDUCT_OBSERVABLE_CLUSTERING = True
 CONDUCT_EXPLAINABLE_DISTANCES = True
+VISUALIZE_FINGERPRINTS = True
 
 optimal_number_of_clusters = config.NUMBER_OBSERVABLE_PATTERNS
 
@@ -20,3 +21,7 @@ if CONDUCT_OBSERVABLE_CLUSTERING:
 
 if CONDUCT_EXPLAINABLE_DISTANCES:
     ClusteringApplier.calculate_explainable_distances()
+
+if VISUALIZE_FINGERPRINTS:
+    ClusteringApplier.visualize_fingerprints()
+    ClusteringApplier.visualize_regression()
