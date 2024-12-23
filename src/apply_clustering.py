@@ -858,7 +858,7 @@ class ClusteringApplier:
         valid_indices = np.intersect1d(df_explainable.index, df_observable_distances.index)
         valid_indices.sort()
         df_explainable = df_explainable.loc[valid_indices]
-        df_observable_distances = df_observable_distances.loc[valid_indices]
+        df_observable_distances = df_observable_distances.loc[valid_indices, valid_indices]
 
         assert df_observable_distances.index.to_list() == df_observable_distances.columns.to_list(), 'Something went wrong: Expected df_observable_distances index to be equal to its columns.'
 

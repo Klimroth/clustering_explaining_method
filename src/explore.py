@@ -14,6 +14,8 @@ from collections import defaultdict
 
 import os
 
+K = config.N_EXPLORATION
+
 EXPLAINING_FEATURE_NAMES = list(config.EXPLAINING_FEATURE_NAMES.keys())
 OBSERVED_FEATURES = list(config.OBSERVABLE_FEATURE_NAMES.keys())
 
@@ -63,56 +65,54 @@ def explore(observed_features, df_explainable):
         sparsity_parameter=config.SPARSITY,
         max_num_threads=config.MAX_NUM_THREADS,
         group_name=config.GROUP_NAME,
+        heuristics_N=config.HEURISTIC_N,
         plot=False
     )
     result = calculate_explainable_distances_result['overview_df'].iloc[0].correlation
-    return result
-
-powerset_observations = chain.from_iterable(
-    combinations(OBSERVED_FEATURES, r) for r in range(2, len(OBSERVED_FEATURES) + 1)
-)
+    return result, optimal_number_of_clusters['n_clusters']
 
 df_explainable = DataPreparator.read_excel_sheet(
     config.INPUT_FILE_EXPLAINING_FEATURES, EXPLAINING_FEATURE_NAMES
 )
 
 result_dict = {}
+n_cluster_dict = {}
 n_iter = 2**len(OBSERVED_FEATURES) - len(OBSERVED_FEATURES) - 1
-print(f'{n_iter} Iterations')
-for observations in powerset_observations:
-    observed_features = list(observations)
-    res = explore(
-        observed_features=observed_features,
-        df_explainable=df_explainable
+print(f'{n_iter*K} Iterations')
+
+for k in range(K):
+    powerset_observations = chain.from_iterable(
+        combinations(OBSERVED_FEATURES, r) for r in range(2, len(OBSERVED_FEATURES) + 1)
     )
-    result_dict[res] = observed_features
+    for observations in powerset_observations:
+        observed_features = list(observations)
+        res, n_clusters = explore(
+            observed_features=observed_features,
+            df_explainable=df_explainable
+        )
+        result_dict[res] = observed_features
+        n_cluster_dict[res] = n_clusters
 
-inv_result_dict = {}
+inv_result_dict = defaultdict(lambda: [])
 for k, v in result_dict.items():
-    inv_result_dict[str(v)] = [k]
-
-fig = plt.figure(figsize=(20, 10))
-ax = sns.barplot(inv_result_dict)
-ax.axes.xaxis.set_tick_params(rotation=90)
+    inv_result_dict[str(v)].append(k)
 
 ouput_folder: str = f"{config.OUTPUT_FOLDER_BASE}exploration/"
 if not os.path.exists(ouput_folder):
     os.makedirs(ouput_folder)
 
-inv_result_dict = {}
-for k, v in result_dict.items():
-    inv_result_dict[str(v)] = [k]
-
 fig = plt.figure(figsize=(20, 10))
 ax = sns.barplot(inv_result_dict)
 ax.axes.xaxis.set_tick_params(rotation=90)
+plt.tight_layout()
 fig.savefig(
     f"{ouput_folder}{config.DATASET_NAME}-exploration_results-{config.NUMBER_OBSERVABLE_PATTERNS}.pdf",
 )
 
 best_score = max(list(result_dict.keys()))
 most_promising_result = result_dict[best_score]
-print(f'Most promising result: {most_promising_result}, with a score of {best_score:.3f}')
+n_clusters = n_cluster_dict[best_score]
+print(f'Most promising result: {most_promising_result}, with a score of {best_score:.3f} and {n_clusters} observable patterns.')
 
 explore_df = pd.DataFrame(inv_result_dict).T.rename(columns={0: 'Score'}).sort_values(by='Score', ascending=False)
 explore_df.to_excel(

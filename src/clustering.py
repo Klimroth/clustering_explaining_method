@@ -40,11 +40,13 @@ class OptimalK_Wrapper(OptimalK):
                  clusterer: Callable = AgglomerativeClustering,
                  clusterer_kwargs: dict = {
                      'linkage': 'ward'
-                     }
+                },
+                parallel_backend = 'joblib'
         ):
         super().__init__(
             clusterer=clusterer,
-            clusterer_kwargs=clusterer_kwargs
+            clusterer_kwargs=clusterer_kwargs,
+            parallel_backend=parallel_backend
         )
 
     def find_optimal_K(
