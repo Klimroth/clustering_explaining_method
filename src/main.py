@@ -17,7 +17,7 @@ if CONDUCT_GAP_STAT_ANALYSIS:
     gap_analysis_result = ClusteringApplier.draw_gap_statistic_plot()
 
 if CONDUCT_OBSERVABLE_CLUSTERING:
-    ClusteringApplier.calculate_observable_patterns(_n_clusters=gap_analysis_result['n_clusters'])
+    ClusteringApplier.calculate_observable_patterns(_n_clusters=gap_analysis_result['n_clusters'], max_fingerprints_per_col=3)
 
 if CONDUCT_EXPLAINABLE_DISTANCES:
     ClusteringApplier.calculate_explainable_distances()

@@ -21,7 +21,7 @@ from visualize_result import ResultVisualizer
 from kneed import KneeLocator
 
 from collections import defaultdict
-from utils import calculate_homogeneity
+from utils import calculate_homogeneity, minmax
 
 
 import config
@@ -121,10 +121,11 @@ class ClusteringApplier:
     @staticmethod
     def _plot_dendrogram_by_distance_matrix(
         mat: np.array, labels: List[str], x_label: str, y_label: str, title: str,
-        use_config:bool=True
+        use_config:bool=True,
+        figsize = (10,3)
     )->None|plt.Figure:
         
-        fig = plt.figure(figsize=(20, 10))
+        fig = plt.figure(figsize=figsize)
         plt.cla()
         plt.clf()
 
@@ -435,6 +436,7 @@ class ClusteringApplier:
         observable_pattern_name:str = 'Name',
         plot_title:str = 'Title',
         linkage:str= 'ward',
+        max_fingerprints_per_col:int=2,
         plot:bool=True
         ) -> dict:
         # load data
@@ -560,6 +562,7 @@ class ClusteringApplier:
                 use_config=use_config,
                 observable_pattern_name=observable_pattern_name,
                 observable_pattern_name_plural=plot_title,
+                max_fingerprints_per_col=max_fingerprints_per_col
             )
         else:
             fig = None
@@ -1025,10 +1028,13 @@ class ClusteringApplier:
         df_fingerprint:pd.DataFrame|None=None,
         df_explainable:pd.DataFrame|None=None,
         optimal_features: List[str]|None=None,
-        use_config:bool=True
+        use_config:bool=True,
+        use_minmax:bool=True,
+        index = None
     ):
         
         if use_config:
+            use_minmax = config.FINGERPRINT_SCALING
             input_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
             df_explainable: pd.DataFrame = ClusteringApplier.read_explaining_features()
             df_fingerprint = pd.read_excel(
@@ -1041,6 +1047,13 @@ class ClusteringApplier:
             optimal_df = pd.read_excel(input_file, index_col=0)
             optimal_features = list(optimal_df.T[optimal_df.T > 0].dropna().T.columns)
 
+        if index is not None:
+            df_explainable = df_explainable.loc[index]
+            df_fingerprint = df_fingerprint.loc[index]
+
+        if use_minmax:
+            df_fingerprint = (df_fingerprint.T / df_fingerprint.T.max()).T
+
         # Ensure that both datasets contain the same indices
         valid_indices = np.intersect1d(df_explainable.index, df_fingerprint.index)
         valid_indices.sort()
@@ -1049,7 +1062,7 @@ class ClusteringApplier:
 
         ResultVisualizer.plot_result_radar_chart(
             simplex_coordinates_fingerprint=df_fingerprint,
-            categories_fingerprint=[f'Pattern_{i}' for i in df_fingerprint.columns],
+            categories_fingerprint=[f'{i+1}' for i in df_fingerprint.columns],
             simplex_coordinates_explainable=df_explainable,
             categories_explainable=df_explainable.columns,
             use_config=use_config,
@@ -1058,7 +1071,7 @@ class ClusteringApplier:
 
         ResultVisualizer.plot_result_radar_chart(
             simplex_coordinates_fingerprint=df_fingerprint,
-            categories_fingerprint=[f'Pattern_{i}' for i in df_fingerprint.columns],
+            categories_fingerprint=[f'{i+1}' for i in df_fingerprint.columns],
             simplex_coordinates_explainable=df_explainable.loc[:, optimal_features],
             categories_explainable=df_explainable.loc[:, optimal_features].columns,
             use_config=use_config,

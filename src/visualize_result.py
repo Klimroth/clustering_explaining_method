@@ -152,8 +152,8 @@ class ResultVisualizer:
             plot_bgcolor="rgba(0, 0, 0, 0)",
             paper_bgcolor="rgba(0, 0, 0, 0)",
             title=dict(
-                text=title,
-                automargin=True,
+                text=title.replace('_', ' '),
+                automargin=False,
                 xref='paper'
             ),
             margin=dict(
