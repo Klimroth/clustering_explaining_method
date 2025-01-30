@@ -73,7 +73,8 @@ class ClusteringApplier:
         use_config:bool=True, df_observable:pd.DataFrame=None,
         gap_statistic_cluster_range:int=10, observed_features=List[str],
         linkage='ward',
-        plot:bool=True
+        plot:bool=True,
+        plot_size:Tuple=(30, 7)
         ) -> int:
 
         if use_config:
@@ -98,9 +99,10 @@ class ClusteringApplier:
 
         knee = kn.knee
         elbow = elb.elbow
-        
+
+        fig = None
         if plot:
-            fig = optimal_K.plot_gaps(AgglomerativeClustering, knee=knee, elbow=elbow, size = (30, 7))
+            fig = optimal_K.plot_gaps(AgglomerativeClustering, knee=knee, elbow=elbow, size = plot_size)
 
         if use_config:
             ouput_folder: str = f"{config.OUTPUT_FOLDER_BASE}gapstat/"
@@ -115,7 +117,8 @@ class ClusteringApplier:
             'n_clusters': n_clusters,
             'knee': knee,
             'elbow': elbow,
-            'clusterer': optimal_K
+            'clusterer': optimal_K,
+            'figure': fig
         }
 
     @staticmethod
@@ -437,7 +440,13 @@ class ClusteringApplier:
         plot_title:str = 'Title',
         linkage:str= 'ward',
         max_fingerprints_per_col:int=2,
-        plot:bool=True
+        plot:bool=True,
+        spacing = {
+            'horizontal_spacing': 0.3,
+            'vertical_spacing': 0.05,
+            'height': 500,
+            'width': 1000
+        }
         ) -> dict:
         # load data
 
@@ -451,10 +460,12 @@ class ClusteringApplier:
             df: pd.DataFrame = ClusteringApplier._read_observable_data(
                 read_only_feature_col=False
             )
-            selected_features = list(observable_feature_names.keys()) 
+            selected_features = list(observable_feature_names.keys())
+            selected_feature_names = list(observable_feature_names.values())
         else:
             df = df_observable_data
             selected_features = observable_feature_names
+            selected_feature_names = observable_feature_names
         
         try:
             clustering_data = df.loc[:, selected_features]
@@ -558,11 +569,12 @@ class ClusteringApplier:
                     df_cluster_median.loc[row, :].to_list()
                     for row in sorted(df_cluster_median.index)
                 ]),
-                observable_labels=selected_features,
+                observable_labels=selected_feature_names,
                 use_config=use_config,
                 observable_pattern_name=observable_pattern_name,
                 observable_pattern_name_plural=plot_title,
-                max_fingerprints_per_col=max_fingerprints_per_col
+                max_fingerprints_per_col=max_fingerprints_per_col,
+                spacing=spacing
             )
         else:
             fig = None

@@ -1,66 +1,66 @@
 # basic configuration
-INPUT_FILE_OBSERVABLE_FEATURES = "../data/biological_set_raw_data.xlsx"
-INPUT_FILE_EXPLAINING_FEATURES = "../data/biological_set_explaining_features.xlsx"
-#INPUT_FILE_OBSERVABLE_FEATURES = "../data/naturverbundenheit_daten_modified.xlsx"
-#INPUT_FILE_EXPLAINING_FEATURES = "../data/naturverbundenheit_indices.xlsx"
+#INPUT_FILE_OBSERVABLE_FEATURES = "../data/biological_set_raw_data.xlsx"
+#INPUT_FILE_EXPLAINING_FEATURES = "../data/biological_set_explaining_features.xlsx"
+INPUT_FILE_OBSERVABLE_FEATURES = "../data/naturverbundenheit_daten_modified.xlsx"
+INPUT_FILE_EXPLAINING_FEATURES = "../data/naturverbundenheit_indices.xlsx"
 
 OUTPUT_FOLDER_BASE = (
-    '../results/zoo_1/'
+    '../results/naturverbundenheit_4/'
 )
 
-GROUP_NAME = "Individual"
-OBSERVABLE_NAME = "observations (night)"
-DATASET_NAME = "biological-dataset"
-OBSERVABLE_PATTERN_NAME = "behavioral pattern"
-OBSERVABLE_PATTERN_NAME_PLURAL = "behavioral patterns"
+#GROUP_NAME = "Individual"
+#OBSERVABLE_NAME = "observations (night)"
+#DATASET_NAME = "biological-dataset"
+#OBSERVABLE_PATTERN_NAME = "behavioural pattern"
+#OBSERVABLE_PATTERN_NAME_PLURAL = "behavioural patterns"
+
+#OBSERVABLE_FEATURE_NAMES = {
+    #"num_lhd": "# LHD phases",
+#    "num_lying": "# lying phases",
+#    "perc_lhd": "proportion LHD",
+#    "perc_lying": "proportion lying",
+#}
+
+#EXPLAINING_FEATURE_NAMES = {
+#    x: x
+#    for x in [
+#        "Age",
+#        "Sex",
+#        "Zoo",
+#        "Stable",
+#        "Genus_ID",
+#        "SH",
+#        "Weight",
+#        "Habitat",
+#    ]
+#}
+
+GROUP_NAME = "Country"
+OBSERVABLE_NAME = "indices"
+DATASET_NAME = "nature-dataset"
+OBSERVABLE_PATTERN_NAME = "response type"
+OBSERVABLE_PATTERN_NAME_PLURAL = "response types"
 
 OBSERVABLE_FEATURE_NAMES = {
-    #"num_lhd": "# LHD phases",
-    "num_lying": "# lying phases",
-    "perc_lhd": "proportion LHD",
-    "perc_lying": "proportion lying",
-}
-
-EXPLAINING_FEATURE_NAMES = {
-    x: x
-    for x in [
-        "Age",
-        "Sex",
-        "Zoo",
-        "Stable",
-        "Genus_ID",
-        "SH",
-        "Weight",
-        "Habitat",
-    ]
-}
-
-#GROUP_NAME = "Country"
-#OBSERVABLE_NAME = "indices"
-#DATASET_NAME = "nature-dataset"
-#OBSERVABLE_PATTERN_NAME = "response type"
-#OBSERVABLE_PATTERN_NAME_PLURAL = "response types"
-
-'''OBSERVABLE_FEATURE_NAMES = {
     "Difference": "discrimination ability",
     "Env_Pol_1": "pollution",
     "Climate_1": "climate change",
     "Aliens_1": "invasive species",
     "Landuse_1": "landuse",
     "Exploit_1": "exploitation of natural resources"
-}'''
+}
 
-#OBSERVABLE_FEATURE_NAMES = {
-#    "Env_Pol_1": "pollution",
-#    "Climate_1": "climate change",
-#    "Aliens_1": "invasive species",
-#    "Landuse_1": "landuse",
-#    "Exploit_1": "exploitation of natural resources"
-#}
+OBSERVABLE_FEATURE_NAMES = {
+    "Env_Pol_1": "pollution",
+    "Climate_1": "climate change",
+    "Aliens_1": "invasive species",
+    "Landuse_1": "landuse",
+    "Exploit_1": "exploitation of natural resources"
+}
 
-#EXPLAINING_FEATURE_NAMES = {
-#   x:x for x in ["NOIS", "APMP", "FosCO2", "BHI", "AQ", "EH", "NFL", "UP", "HDI", "LPI", "EPI", "SDG", "NRI", "FA", "AL", "GI"]
-#}
+EXPLAINING_FEATURE_NAMES = {
+   x:x for x in ["NOIS", "APMP", "FosCO2", "BHI", "AQ", "EH", "NFL", "UP", "HDI", "LPI", "EPI", "SDG", "NRI", "FA", "AL", "GI"]
+}
 
 
 # determining the maximum number of observable patterns

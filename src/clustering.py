@@ -184,14 +184,15 @@ class OptimalK_Wrapper(OptimalK):
             c="r",
             label = 'optimal-K'
         )
-        plt.vlines(
-            knee, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="knee",
-            linewidth = 3, color = 'orange'
-        )
-        plt.vlines(
-            elbow, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="elbow",
-            linewidth = 3, color = 'teal'
-        )
+        if False:
+            plt.vlines(
+                knee, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="knee",
+                linewidth = 3, color = 'orange'
+            )
+            plt.vlines(
+                elbow, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="elbow",
+                linewidth = 3, color = 'teal'
+            )
         plt.grid(True)
         plt.xlabel("Cluster Count")
         plt.ylabel("Gap Value")

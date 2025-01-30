@@ -35,6 +35,13 @@ class ResultVisualizer:
         use_config:bool = True,
         observable_pattern_name:str = 'Name',
         observable_pattern_name_plural:str = 'Names',
+        spacing = {
+            'horizontal_spacing': 0.3,
+            'vertical_spacing': 0.05,
+            'height': 500,
+            'width': 1000,
+            'row_heights': None
+        }
     ):
         
         if use_config:
@@ -58,7 +65,7 @@ class ResultVisualizer:
 
         fig = make_subplots(
             rows=num_rows, cols=num_cols, specs=[[{'type': 'polar'}]*num_cols]*num_rows,
-            horizontal_spacing=0.3, vertical_spacing=0.05,
+            horizontal_spacing=spacing['horizontal_spacing'], vertical_spacing=spacing['vertical_spacing'], row_heights=spacing['row_heights'],
             subplot_titles=subplot_titles #[f'Cluster {j+1}' for j in range(len(scaled_observable_patterns))]
         )
 
@@ -76,7 +83,7 @@ class ResultVisualizer:
         )
 
         fig.update_polars(dict(radialaxis=dict(visible=True, range=plot_range, showticklabels=False)))
-        fig.update_layout(height=500*num_rows, width=1000)
+        fig.update_layout(height=spacing['height']*num_rows, width=spacing['width'])
 
         if use_config:
             output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
@@ -113,7 +120,7 @@ class ResultVisualizer:
                 cols=num_cols,
                 specs=[[{'type': 'polar', 'l':0.1}]*(num_cols)]*num_rows,
                 horizontal_spacing=0.3, vertical_spacing=(0.05 / (num_rows - 1)),
-                column_titles=["observable patterns", "explainable features"],
+                column_titles=["observable patterns", "explanatory features"],
             )
         
         for i in range(num_rows):
@@ -268,7 +275,8 @@ class ResultVisualizer:
     @staticmethod
     def plot_homogeneity(hom_df:pd.DataFrame):
         fig = plt.figure(figsize=(10, 5))
-        ax = sns.barplot(hom_df)
+        dark_black_palette = sns.dark_palette("#000000", n_colors=hom_df.shape[1], reverse=True)
+        ax = sns.barplot(hom_df, palette=dark_black_palette)
         ax.axes.set_ylabel('Homogeneity')
         ax.axes.xaxis.set_tick_params(rotation=90)
         output_path = f"{config.OUTPUT_FOLDER_BASE}result_visualization/"
