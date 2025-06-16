@@ -441,12 +441,7 @@ class ClusteringApplier:
         linkage:str= 'ward',
         max_fingerprints_per_col:int=2,
         plot:bool=True,
-        spacing = {
-            'horizontal_spacing': 0.3,
-            'vertical_spacing': 0.05,
-            'height': 500,
-            'width': 1000
-        }
+        spacing = None
         ) -> dict:
         # load data
 
@@ -924,12 +919,12 @@ class ClusteringApplier:
 
         # draw dendrogram of those explaining set
         _, df_explainable_distances = ClusteringApplier.calculate_pairwise_distances(
-            df_explainable, features, distance_measure
+            df_explainable, optimal_feature_set, distance_measure
         )
 
         if debug:
             _, rdf_explainable_distances = ClusteringApplier.rowwise_calculate_pairwise_distances(
-                df_explainable, features, distance_measure
+                df_explainable, optimal_feature_set, distance_measure
             )
             assert np.isclose(df_explainable_distances.to_numpy(), rdf_explainable_distances.to_numpy()).all().all(), 'Debug Failed'
 
@@ -1042,7 +1037,8 @@ class ClusteringApplier:
         optimal_features: List[str]|None=None,
         use_config:bool=True,
         use_minmax:bool=True,
-        index = None
+        index = None,
+        spacing = None
     ):
         
         if use_config:
@@ -1078,7 +1074,8 @@ class ClusteringApplier:
             simplex_coordinates_explainable=df_explainable,
             categories_explainable=df_explainable.columns,
             use_config=use_config,
-            title='fingerprints_all_features'
+            title='fingerprints_all_features',
+            spacing = spacing
         )
 
         ResultVisualizer.plot_result_radar_chart(
@@ -1087,7 +1084,8 @@ class ClusteringApplier:
             simplex_coordinates_explainable=df_explainable.loc[:, optimal_features],
             categories_explainable=df_explainable.loc[:, optimal_features].columns,
             use_config=use_config,
-            title='fingerprints_optimal_features'
+            title='fingerprints_optimal_features',
+            spacing = spacing
         )
 
     @staticmethod

@@ -35,23 +35,41 @@ class ResultVisualizer:
         use_config:bool = True,
         observable_pattern_name:str = 'Name',
         observable_pattern_name_plural:str = 'Names',
-        spacing = {
-            'horizontal_spacing': 0.3,
+        spacing={
+            'horizontal_spacing': 0.10,
             'vertical_spacing': 0.05,
-            'height': 500,
-            'width': 1000,
-            'row_heights': None
+            'height': 550,
+            'width': 1200,
+            'fontsize': 20,
+            'row_heights': [0.1],
+            'title': 26,
+            'subtitles': 22
         }
     ):
         
         if use_config:
             observable_pattern_name = config.OBSERVABLE_PATTERN_NAME
-            observable_pattern_name_plural = config.OBSERVABLE_PATTERN_NAME_PLURAL        
+            observable_pattern_name_plural = config.OBSERVABLE_PATTERN_NAME_PLURAL 
+
+        if spacing is None:
+            spacing={
+                'horizontal_spacing': 0.10,
+                'vertical_spacing': 0.05,
+                'height': 550,
+                'width': 1200,
+                'fontsize': 20,
+                'row_heights': [0.1],
+                'title': 26,
+                'subtitles': 22
+            }    
 
         subplot_titles: List[str] = [
             f"{observable_pattern_name} {j+1}"
             for j in range(len(observable_patterns))
         ]
+
+        if 'row_heights' not in spacing.keys():
+            spacing['row_heights'] = None
  
         scaled_observable_patterns = observable_patterns
 
@@ -65,15 +83,21 @@ class ResultVisualizer:
 
         fig = make_subplots(
             rows=num_rows, cols=num_cols, specs=[[{'type': 'polar'}]*num_cols]*num_rows,
-            horizontal_spacing=spacing['horizontal_spacing'], vertical_spacing=spacing['vertical_spacing'], row_heights=spacing['row_heights'],
-            subplot_titles=subplot_titles #[f'Cluster {j+1}' for j in range(len(scaled_observable_patterns))]
+            horizontal_spacing=spacing['horizontal_spacing'], vertical_spacing=spacing['vertical_spacing'], row_heights=spacing['row_heights']*num_rows,
+            subplot_titles=subplot_titles
         )
 
         for j in range(len(scaled_observable_patterns)):
             row = j // max_fingerprints_per_col + 1
             col = j % num_cols + 1
             current_pattern: np.array = np.array(scaled_observable_patterns[j])
-            fig.add_scatterpolar(r=current_pattern, theta=observable_labels, fill="toself", row=row, col=col)
+            fig.add_scatterpolar(
+                r=current_pattern,
+                theta=observable_labels,
+                fill="toself",
+                row=row,
+                col=col
+            )
 
         fig.update_layout(
             showlegend=False,
@@ -83,7 +107,13 @@ class ResultVisualizer:
         )
 
         fig.update_polars(dict(radialaxis=dict(visible=True, range=plot_range, showticklabels=False)))
-        fig.update_layout(height=spacing['height']*num_rows, width=spacing['width'])
+        fig.update_layout(
+            height=spacing['height']*num_rows,
+            width=spacing['width'],
+            font=dict(size=spacing['fontsize']),
+            title_font_size=spacing['title']
+        )
+        fig.update_annotations(font_size=spacing['subtitles'])
 
         if use_config:
             output_path = f"{config.OUTPUT_FOLDER_BASE}observables/"
@@ -103,7 +133,14 @@ class ResultVisualizer:
         simplex_coordinates_explainable: pd.DataFrame,
         categories_explainable: List[str],
         title: str,
-        use_config: bool = False
+        use_config: bool = False,
+        spacing = {
+            'horizontal': 0.3,
+            'vertical': 0.05,
+            'L': 0.1,
+            'fontsize1': 18,
+            'fontsize2': 16
+        }
     ):
 
         assert simplex_coordinates_fingerprint.shape[0] == simplex_coordinates_explainable.shape[0], \
@@ -113,13 +150,22 @@ class ResultVisualizer:
         num_cols=2
         plot_range = [0,1]
 
+        if spacing is None:
+            spacing = {
+                'horizontal': 0.3,
+                'vertical': 0.05,
+                'L': 0.1,
+                'fontsize1': 18,
+                'fontsize2': 16
+            }     
+
         row_titles = list(simplex_coordinates_explainable.index)
 
         fig = make_subplots(
                 rows=num_rows,
                 cols=num_cols,
-                specs=[[{'type': 'polar', 'l':0.1}]*(num_cols)]*num_rows,
-                horizontal_spacing=0.3, vertical_spacing=(0.05 / (num_rows - 1)),
+                specs=[[{'type': 'polar', 'l': spacing['L']}]*(num_cols)]*num_rows,
+                horizontal_spacing=spacing['horizontal'], vertical_spacing=(spacing['vertical'] / (num_rows - 1)),
                 column_titles=["observable patterns", "explanatory features"],
             )
         
@@ -141,7 +187,7 @@ class ResultVisualizer:
                 showarrow=False,
                 xref="paper",
                 yref="paper",
-                font=dict(size=14, color="black"),
+                font=dict(size=spacing['fontsize1'], color="black"),
                 align="center"
             ))
 
@@ -170,7 +216,8 @@ class ResultVisualizer:
                 r=50   # Right margin
             ),
             height=300*num_rows,
-            width=600
+            width=600,
+            font=dict(size=spacing['fontsize2'])
         )
 
         fig.update_polars(
@@ -274,7 +321,7 @@ class ResultVisualizer:
 
     @staticmethod
     def plot_homogeneity(hom_df:pd.DataFrame):
-        fig = plt.figure(figsize=(10, 5))
+        fig = plt.figure(figsize=(14, 5))
         dark_black_palette = sns.dark_palette("#000000", n_colors=hom_df.shape[1], reverse=True)
         ax = sns.barplot(hom_df, palette=dark_black_palette)
         ax.axes.set_ylabel('Homogeneity')

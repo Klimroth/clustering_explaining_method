@@ -177,13 +177,14 @@ class OptimalK_Wrapper(OptimalK):
         # Gap values plot
         plt.subplot(1, 2, 2)
         plt.plot(self.gap_df.n_clusters, self.gap_df.gap_value, linewidth=2, label = 'data')
-        plt.scatter(
-            self.gap_df[self.gap_df.n_clusters == self.n_clusters].n_clusters,
-            self.gap_df[self.gap_df.n_clusters == self.n_clusters].gap_value,
-            s=95,
-            c="r",
-            label = 'optimal-K'
-        )
+        if False:
+            plt.scatter(
+                self.gap_df[self.gap_df.n_clusters == self.n_clusters].n_clusters,
+                self.gap_df[self.gap_df.n_clusters == self.n_clusters].gap_value,
+                s=95,
+                c="r",
+                label = 'optimal-K'
+            )
         if False:
             plt.vlines(
                 knee, plt.ylim()[0], plt.ylim()[1], linestyles="--", label="knee",
@@ -196,7 +197,7 @@ class OptimalK_Wrapper(OptimalK):
         plt.grid(True)
         plt.xlabel("Cluster Count")
         plt.ylabel("Gap Value")
-        plt.legend(loc="best")
+        #plt.legend(loc="best")
         plt.title("Gap Values by Cluster Count")
 
         
@@ -272,7 +273,7 @@ def make_agglomerative_clustering_function(linkage='ward'):
         # Here you can do whatever clustering algorithm you heart desires,
         # but we'll do a simple wrap of the MeanShift model in sklearn.
         
-        model = AgglomerativeClustering(n_clusters=k, linkage='ward', compute_distances=False)
+        model = AgglomerativeClustering(n_clusters=k, linkage=linkage, compute_distances=False)
         y = model.fit_predict(X)
         nearest_centroid = NearestCentroid()
         nearest_centroid.fit(X, y)

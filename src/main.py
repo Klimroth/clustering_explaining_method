@@ -14,7 +14,7 @@ if CONDUCT_DATA_PREPARATION:
     DataPreparator.prepare_data()
 
 if CONDUCT_GAP_STAT_ANALYSIS:
-    gap_analysis_result = ClusteringApplier.draw_gap_statistic_plot()
+    gap_analysis_result = ClusteringApplier.draw_gap_statistic_plot(linkage='ward')
 
 if CONDUCT_OBSERVABLE_CLUSTERING:
     ClusteringApplier.calculate_observable_patterns(_n_clusters=gap_analysis_result['n_clusters'], max_fingerprints_per_col=3)
